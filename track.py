@@ -51,6 +51,13 @@ def parse_args():
         default=Path("configs/default.yaml"),
         help="Configuration file path"
     )
+    parser.add_argument(
+        "--pose-detector",
+        type=str,
+        default="yolo",
+        choices=["yolo", "mediapipe"],
+        help="Pose detection engine to use (default: yolo)"
+    )
     return parser.parse_args()
 
 
@@ -185,7 +192,7 @@ def main():
     
     if detect_pose:
         pose_detector = PoseDetector(cfg)
-        pose_detector.load_model(cfg)
+        pose_detector.load_model(cfg, detector_type=args.pose_detector)
     
     # Setup video info
     video_info = sv.VideoInfo.from_video_path(str(source_path))
@@ -203,6 +210,8 @@ def main():
     
     print(f"Processing video: {source_path}")
     print(f"Active stages: {', '.join(stages)}")
+    if detect_pose:
+        print(f"Pose detector: {args.pose_detector}")
     print(f"Output directory: {save_dir}")
     
     # Process video

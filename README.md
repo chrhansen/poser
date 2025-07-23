@@ -20,10 +20,11 @@ This project provides a modular Python pipeline for detecting, tracking, and ana
 ## Features
 
 - **Modular Design**: Run object detection only, pose estimation only, or both
-- **YOLOv11 Models**: Uses YOLOv11 Medium for object detection and YOLOv11 Pose for keypoint detection
+- **Dual Pose Engines**: Choose between YOLOv11 Pose or MediaPipe Pose Landmarker
+- **YOLOv11 Models**: Uses YOLOv11 Medium for object detection and YOLOv11 X-Large Pose for keypoint detection
 - **Advanced Tracking**: BoT-SORT algorithm with ReID for robust sports tracking
 - **GPU Acceleration**: Automatic detection and use of CUDA (NVIDIA) or MPS (Apple Silicon)
-- **Pose Estimation**: Overlay skeletal keypoints on tracked skiers
+- **Pose Estimation**: Overlay skeletal keypoints on tracked skiers with engine-specific optimizations
 - **Configurable Pipeline**: YAML-based configuration for easy customization
 
 ## Installation
@@ -45,6 +46,11 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+### 4. Download MediaPipe model (optional, for MediaPipe pose detection)
+```bash
+python3 download_models.py
+```
+
 ## Quick Start
 
 ### Basic Usage
@@ -63,6 +69,7 @@ python3 track.py --source path/to/your/video.mp4
 | `--save_dir` | `out` | Output directory for processed videos |
 | `--show` | False | Display live preview window |
 | `--config` | `configs/default.yaml` | Configuration file path |
+| `--pose-detector` | `yolo` | Pose detection engine: `yolo` or `mediapipe` |
 
 ### Examples
 
@@ -76,6 +83,10 @@ python3 track.py --source videos/ski_run.mp4 --detect objects
 python3 track.py --source videos/ski_run.mp4 --detect pose
 ```
 
+**Use MediaPipe for pose detection:**
+```bash
+python3 track.py --source videos/ski_run.mp4 --pose-detector mediapipe
+```
 
 **Custom output directory:**
 ```bash
@@ -107,7 +118,8 @@ The pipeline behavior can be customized via YAML configuration files in the `con
 ```yaml
 # Model settings
 object_model: yolo11m.pt          # YOLOv11 model for object detection
-pose_model: yolo11m-pose.pt       # YOLOv11 pose model (or "mediapipe")
+pose_model: yolo11x-pose.pt       # YOLOv11 pose model (use with --pose-detector yolo)
+mediapipe_model_path: models/pose_landmarker_heavy.task  # MediaPipe model (use with --pose-detector mediapipe)
 device: auto                      # Device selection: "auto", "cpu", "mps", or "cuda"
 
 # Pose estimation settings
@@ -207,14 +219,21 @@ pip install opencv-contrib-python
 poser/
 ├── track.py                # Main entry point
 ├── detect_objects.py       # Object detection and tracking module
-├── detect_pose.py          # Pose estimation module
+├── detect_pose.py          # Pose estimation factory module
+├── pose_detector_base.py   # Abstract base class for pose detectors
+├── yolo_pose_detector.py   # YOLO-Pose implementation
+├── mediapipe_pose_detector.py  # MediaPipe Pose implementation
+├── download_models.py      # Script to download MediaPipe models
 ├── utils/                  # Utility modules
 │   ├── smoothing.py       # Keypoint smoothing filters
 │   ├── geometry.py        # Bounding box operations
 │   └── visual.py          # Drawing utilities
 ├── configs/               # Configuration files
 │   └── default.yaml       # Default settings
+├── models/                # Model files (not tracked in git)
+│   └── .gitkeep          # Keeps folder in git
 ├── out/                   # Default output directory
+│   └── .gitkeep          # Keeps folder in git
 └── requirements.txt       # Python dependencies
 ```
 

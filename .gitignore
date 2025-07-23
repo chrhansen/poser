@@ -113,10 +113,16 @@ ehthumbs_vista.db
 # *.tiff
 # *.tif
 
-# Output directories
-out/
+# Output directories - keep folders but ignore contents
+out/*
+!out/.gitkeep
 results/
 outputs/
+
+# Models directory - keep folder but ignore model files
+models/*
+!models/.gitkeep
+*.task  # MediaPipe models
 
 # Logs
 *.log
