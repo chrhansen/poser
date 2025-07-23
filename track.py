@@ -35,13 +35,6 @@ def parse_args():
         help="Which stages to activate (comma-separated: objects,pose)"
     )
     parser.add_argument(
-        "--tracker",
-        type=str,
-        default="botsort",
-        choices=["botsort", "ocsort"],
-        help="Tracker backend to use"
-    )
-    parser.add_argument(
         "--save_dir",
         type=str,
         default="out",
@@ -188,7 +181,7 @@ def main():
     if detect_objects:
         obj_detector = ObjectDetector(cfg)
         obj_detector.load_model(cfg)
-        obj_detector.init_tracker(cfg, args.tracker)
+        obj_detector.init_tracker(cfg)
     
     if detect_pose:
         pose_detector = PoseDetector(cfg)

@@ -39,3 +39,9 @@ The `docs/spec-bbox.md` file contains specifications for a different approach us
 - No linting or formatting tools configured
 - Dependencies are installed in the virtual environment but no requirements.txt exists
 - The project processes video files frame-by-frame, adding pose overlays and bounding boxes
+
+## Git Workflow
+
+- **IMPORTANT**: Only commit and push changes when explicitly instructed by the user
+- Do not automatically commit after making changes
+- Wait for explicit instructions like "commit this" or "push to git" before using git commands

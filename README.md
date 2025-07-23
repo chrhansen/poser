@@ -21,7 +21,7 @@ This project provides a modular Python pipeline for detecting, tracking, and ana
 
 - **Modular Design**: Run object detection only, pose estimation only, or both
 - **YOLOv11 Models**: Uses YOLOv11 Medium for object detection and YOLOv11 Pose for keypoint detection
-- **Advanced Tracking**: BoT-SORT (default) or OC-SORT algorithms optimized for sports tracking
+- **Advanced Tracking**: BoT-SORT algorithm with ReID for robust sports tracking
 - **GPU Acceleration**: Automatic detection and use of CUDA (NVIDIA) or MPS (Apple Silicon)
 - **Pose Estimation**: Overlay skeletal keypoints on tracked skiers
 - **Configurable Pipeline**: YAML-based configuration for easy customization
@@ -60,7 +60,6 @@ python3 track.py --source path/to/your/video.mp4
 |--------|---------|-------------|
 | `--source` | *required* | Path to input video file |
 | `--detect` | `objects,pose` | Detection stages to run (comma-separated) |
-| `--tracker` | `botsort` | Tracker algorithm (`botsort` or `ocsort`) |
 | `--save_dir` | `out` | Output directory for processed videos |
 | `--show` | False | Display live preview window |
 | `--config` | `configs/default.yaml` | Configuration file path |
@@ -77,10 +76,6 @@ python3 track.py --source videos/ski_run.mp4 --detect objects
 python3 track.py --source videos/ski_run.mp4 --detect pose
 ```
 
-**Use OC-SORT tracker:**
-```bash
-python3 track.py --source videos/ski_run.mp4 --tracker ocsort
-```
 
 **Custom output directory:**
 ```bash
@@ -170,17 +165,14 @@ Running on Apple Silicon GPU (Metal Performance Shaders)
 
 This helps verify that GPU acceleration is properly configured.
 
-## Tracker Comparison
+## Tracking Algorithm
 
-### BoT-SORT (Default)
-- **Best for**: Complex scenes with occlusions
-- **Features**: Uses appearance features (ReID) for robust tracking
-- **Trade-off**: Slightly slower but more accurate
+The system uses **BoT-SORT** (Bag of Tricks for Real-time Multi-Object Tracking), which combines:
+- **Motion prediction** for smooth trajectory estimation
+- **Appearance features (ReID)** for robust re-identification after occlusions
+- **Optimized association** for handling complex sports scenarios
 
-### OC-SORT
-- **Best for**: Simple scenes with predictable motion
-- **Features**: Lightweight, motion-based tracking
-- **Trade-off**: Faster but may struggle with occlusions
+This provides reliable tracking even when skiers temporarily overlap or exit/re-enter the frame.
 
 ## Troubleshooting
 
@@ -207,7 +199,7 @@ pip install opencv-contrib-python
 1. **Use GPU acceleration** when available (CUDA or MPS)
 2. **Adjust detection stages** - run only what you need
 3. **Configure smoothing** - disable for lowest latency
-4. **Choose appropriate tracker** - OC-SORT for speed, BoT-SORT for accuracy
+4. **Adjust tracker parameters** in config file for your specific use case
 
 ## Project Structure
 

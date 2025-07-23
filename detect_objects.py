@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Object detection and tracking module using YOLOv11 and BoT-SORT/OC-SORT.
+Object detection and tracking module using YOLOv11 and BoT-SORT.
 """
 
 from pathlib import Path
@@ -8,7 +8,7 @@ from typing import List, Tuple, Dict, Optional
 import numpy as np
 import torch
 from ultralytics import YOLO
-from boxmot import BotSort, OcSort
+from boxmot import BotSort
 import supervision as sv
 
 
@@ -44,37 +44,24 @@ class ObjectDetector:
         self.model = model
         return model
     
-    def init_tracker(self, cfg: dict, tracker_type: str = 'botsort') -> object:
-        """Create BoT-SORT / OC-SORT instance with config parameters."""
+    def init_tracker(self, cfg: dict) -> object:
+        """Create BoT-SORT instance with config parameters."""
         tracker_cfg = cfg.get('tracker', {})
         
-        if tracker_type == 'botsort':
-            self.tracker = BotSort(
-                reid_weights=Path('osnet_x0_25_msmt17.pt'),
-                device=self.device,
-                half=False,
-                track_high_thresh=tracker_cfg.get('track_high_thresh', 0.6),
-                track_low_thresh=tracker_cfg.get('track_low_thresh', 0.1),
-                new_track_thresh=tracker_cfg.get('new_track_thresh', 0.7),
-                track_buffer=30,
-                match_thresh=0.8,
-                proximity_thresh=0.5,
-                appearance_thresh=0.25,
-                with_reid=True
-            )
-            print("Using BotSort tracker")
-        else:  # ocsort
-            self.tracker = OcSort(
-                det_thresh=tracker_cfg.get('new_track_thresh', 0.7),
-                max_age=30,
-                min_hits=3,
-                asso_threshold=0.3,
-                delta_t=3,
-                asso_func="iou",
-                inertia=0.2,
-                use_byte=False
-            )
-            print("Using OcSort tracker")
+        self.tracker = BotSort(
+            reid_weights=Path('osnet_x0_25_msmt17.pt'),
+            device=self.device,
+            half=False,
+            track_high_thresh=tracker_cfg.get('track_high_thresh', 0.6),
+            track_low_thresh=tracker_cfg.get('track_low_thresh', 0.1),
+            new_track_thresh=tracker_cfg.get('new_track_thresh', 0.7),
+            track_buffer=30,
+            match_thresh=0.8,
+            proximity_thresh=0.5,
+            appearance_thresh=0.25,
+            with_reid=True
+        )
+        print("Using BotSort tracker")
             
         return self.tracker
     
