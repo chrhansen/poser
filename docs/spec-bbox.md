@@ -1,6 +1,4 @@
-Of course. Here is the complete, self-contained software development specification.
-
-***
+https://aistudio.google.com/prompts/1dmRAg6JfTxEvf9dBSbMLfGP8qsRa6fLG
 
 ## **Software Development Specification: Skier Detection and Tracking Script**
 
