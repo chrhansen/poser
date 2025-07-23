@@ -2,6 +2,21 @@
 
 This project provides a modular Python pipeline for detecting, tracking, and analyzing skiers in video footage. It combines YOLOv11 object detection with BoT-SORT tracking and optional pose estimation to create detailed visualizations of skier movements.
 
+## Visual Example
+
+<table>
+<tr>
+<td align="center"><b>Original Frame</b></td>
+<td align="center"><b>Object Tracking</b></td>
+<td align="center"><b>Pose Estimation</b></td>
+</tr>
+<tr>
+<td><img src="docs/frame_raw.png" width="300" alt="Raw video frame"/></td>
+<td><img src="docs/frame_with_box.png" width="300" alt="Frame with tracking box"/></td>
+<td><img src="docs/frame_with_pose.png" width="300" alt="Frame with pose overlay"/></td>
+</tr>
+</table>
+
 ## Features
 
 - **Modular Design**: Run object detection only, pose estimation only, or both
@@ -15,7 +30,7 @@ This project provides a modular Python pipeline for detecting, tracking, and ana
 
 ### 1. Clone the repository
 ```bash
-git clone <repository-url>
+git clone https://github.com/chrhansen/poser
 cd poser
 ```
 
@@ -117,7 +132,7 @@ smoothing:
 # Tracker settings
 tracker:
   track_high_thresh: 0.6          # High confidence threshold
-  track_low_thresh: 0.1           # Low confidence threshold  
+  track_low_thresh: 0.1           # Low confidence threshold
   new_track_thresh: 0.7           # Threshold for creating new tracks
 
 # Output settings
