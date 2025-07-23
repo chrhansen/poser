@@ -1,0 +1,12 @@
+object_model: yolo11m.pt
+pose_model: yolo11m-pose.pt       # or "mediapipe"
+device: auto                     # "auto" | "cpu" | "mps" | "cuda"
+pad_ratio: 0.5
+conf_min: 0.2
+smoothing:
+  kind: none  # Disable smoothing completely for no lag
+tracker:
+  track_high_thresh: 0.6
+  track_low_thresh: 0.1
+  new_track_thresh: 0.7
+output_fps: null                 # keep original if null

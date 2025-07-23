@@ -1,7 +1,9 @@
-ultralytics
-supervision[video]
-numpy
-# For StrongSORT tracking
+ultralytics>=8.0.0
+mediapipe>=0.10.0
+opencv-contrib-python>=4.8.0
+torch>=2.0.0
 boxmot
-torch
+supervision>=0.16.0
+numpy>=1.24.0
+pyyaml>=6.0
 torchvision

@@ -1,46 +1,160 @@
-# Virtual Environment
-venv/
-env/
-.venv/
-
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# YOLO Models
-*.pt
-*.pth
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+.ENV/
+venv.bak/
 
-# Videos
-videos/*.mp4
-videos/*.mov
-videos/*.avi
-videos/*.mkv
-videos/*.webm
-videos/*.flv
-videos/*.wmv
-videos/*.mpg
-videos/*.mpeg
+# PyCharm
+.idea/
+
+# VSCode
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# pyenv
+.python-version
+
+# Environments
+.env
+.env.local
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
 
 # macOS
 .DS_Store
 .AppleDouble
 .LSOverride
+Icon
+._*
 
-# IDE
-.vscode/
-.idea/
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# YOLO Models (downloaded automatically)
+*.pt
+*.pth
+*.onnx
+*.engine
+*.mlmodel
+
+# Video files (anywhere in the project)
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+*.flv
+*.wmv
+*.mpg
+*.mpeg
+*.m4v
+*.3gp
+*.f4v
+*.ogv
+*.webm
+*.mts
+*.m2ts
+*.MTS
+*.M2TS
+
+# Image files (optional, uncomment if needed)
+# *.jpg
+# *.jpeg
+# *.png
+# *.gif
+# *.bmp
+# *.tiff
+# *.tif
+
+# Output directories
+out/
+results/
+outputs/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+
+# Editor backups
 *.swp
 *.swo
+*.swn
+*.bak
 *~
 
-# Jupyter Notebook
-.ipynb_checkpoints
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
 
-# Distribution / packaging
-dist/
-build/
-*.egg-info/
+# Documentation
+docs/_build/
+site/
+
+# Package files
+*.tar.gz
+*.zip
+
+# Security
+*.pem
+*.key
+.env
+.env.*

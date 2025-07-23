@@ -1,188 +1,219 @@
-# Skier Detection and Tracking with YOLOv11
+# Track-and-Pose: Modular Skier Analysis Pipeline
 
-This project provides a high-performance Python script that uses YOLOv11 object detection to locate and track skiers in video files. The script processes videos frame-by-frame, identifies skiers, and draws persistent bounding boxes with unique tracker IDs using BoT-SORT or OC-SORT algorithms optimized for sports tracking.
-
-## Visual Example
-
-<table>
-<tr>
-<td align="center"><b>Before</b></td>
-<td align="center"><b>After</b></td>
-</tr>
-<tr>
-<td><img src="frame_before.png" alt="Original frame" width="400"/></td>
-<td><img src="frame_after.png" alt="Frame with tracking" width="400"/></td>
-</tr>
-</table>
+This project provides a modular Python pipeline for detecting, tracking, and analyzing skiers in video footage. It combines YOLOv11 object detection with BoT-SORT tracking and optional pose estimation to create detailed visualizations of skier movements.
 
 ## Features
 
-- YOLOv11 Medium model for accurate person detection
-- BoT-SORT algorithm (default) optimized for sports tracking
-- OC-SORT algorithm as an alternative lightweight tracker
-- GPU acceleration support (CUDA and Apple Silicon MPS)
-- Automatic output file naming with `_with_box` suffix
-- Configurable tracking parameters for different scenarios
+- **Modular Design**: Run object detection only, pose estimation only, or both
+- **YOLOv11 Models**: Uses YOLOv11 Medium for object detection and YOLOv11 Pose for keypoint detection
+- **Advanced Tracking**: BoT-SORT (default) or OC-SORT algorithms optimized for sports tracking
+- **GPU Acceleration**: Automatic detection and use of CUDA (NVIDIA) or MPS (Apple Silicon)
+- **Pose Estimation**: Overlay skeletal keypoints on tracked skiers
+- **Configurable Pipeline**: YAML-based configuration for easy customization
 
 ## Installation
 
-### 1. Clone the repository and navigate to the project directory
+### 1. Clone the repository
 ```bash
-cd /path/to/poser
+git clone <repository-url>
+cd poser
 ```
 
-### 2. Create a Python virtual environment
+### 2. Create and activate a Python virtual environment
 ```bash
 python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-### 3. Activate the virtual environment
-
-**macOS/Linux:**
-```bash
-source venv/bin/activate
-```
-
-**Windows:**
-```bash
-venv\Scripts\activate
-```
-
-### 4. Install the required dependencies
+### 3. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-This will install:
-- `ultralytics` - YOLOv11 implementation
-- `supervision` - Video processing and tracking
-- `numpy` - Numerical operations
-- `boxmot` - BoT-SORT and OC-SORT tracker implementations
-- `torch` and `torchvision` - Deep learning framework
+## Quick Start
 
-## First Run - Model Download
+### Basic Usage
 
-The YOLOv11 model will be automatically downloaded on the first run. The script uses `yolo11m.pt` (YOLOv11 Medium), which is approximately 51MB and will be saved in the project root directory.
-
-When using BoT-SORT, the ReID model `osnet_x0_25_msmt17.pt` will also be downloaded automatically on first use.
-
-## Usage
-
-### Basic Command
+Process a video with both object tracking and pose estimation:
 ```bash
-python3 track_skier.py --source /path/to/your/video.mp4
-```
-
-### Examples
-```bash
-# Process a video with default BoT-SORT tracking
-python3 track_skier.py --source ski_run.mp4
-
-# Use lightweight OC-SORT tracker
-python3 track_skier.py --source ski_run.mp4 --tracker ocsort
-
-# Adjust tracking sensitivity for BoT-SORT
-python3 track_skier.py --source ski_run.mp4 --track-high-thresh 0.7 --track-low-thresh 0.2
-
-# Process a video with full path
-python3 track_skier.py --source /Users/username/Videos/ski_competition.mov
+python3 track.py --source path/to/your/video.mp4
 ```
 
 ### Command Line Options
 
-- `--source`: Path to input video file (required)
-- `--tracker`: Choose tracker algorithm: "botsort" (default) or "ocsort"
-- `--track-high-thresh`: High confidence threshold for tracking (default: 0.6)
-- `--track-low-thresh`: Low confidence threshold for tracking (default: 0.1)
-- `--new-track-thresh`: Threshold for creating new tracks (default: 0.7)
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--source` | *required* | Path to input video file |
+| `--detect` | `objects,pose` | Detection stages to run (comma-separated) |
+| `--tracker` | `botsort` | Tracker algorithm (`botsort` or `ocsort`) |
+| `--save_dir` | `out` | Output directory for processed videos |
+| `--show` | False | Display live preview window |
+| `--config` | `configs/default.yaml` | Configuration file path |
 
-### Output File
+### Examples
 
-The output video will be saved in the **same directory** as the input file with `_with_box` added before the file extension.
+**Object tracking only:**
+```bash
+python3 track.py --source videos/ski_run.mp4 --detect objects
+```
 
-**Examples:**
-- Input: `ski_run.mp4` → Output: `ski_run_with_box.mp4`
-- Input: `test-ski-video2.mov` → Output: `test-ski-video2_with_box.mov`
-- Input: `/path/to/videos/alpine.mp4` → Output: `/path/to/videos/alpine_with_box.mp4`
+**Pose estimation only:**
+```bash
+python3 track.py --source videos/ski_run.mp4 --detect pose
+```
+
+**Use OC-SORT tracker:**
+```bash
+python3 track.py --source videos/ski_run.mp4 --tracker ocsort
+```
+
+**Custom output directory:**
+```bash
+python3 track.py --source videos/ski_run.mp4 --save_dir results/
+```
+
+**Show live preview:**
+```bash
+python3 track.py --source videos/ski_run.mp4 --show
+```
+
+## Output Files
+
+The script generates separate output videos in the specified directory (default: `out/`):
+
+- **Object Tracking**: `<video_name>_with_box.mp4` - Shows bounding boxes with tracker IDs
+- **Pose Estimation**: `<video_name>_with_pose.mp4` - Shows skeletal keypoints on the main tracked skier
+
+Example:
+- Input: `ski_race.mp4`
+- Outputs: `out/ski_race_with_box.mp4`, `out/ski_race_with_pose.mp4`
+
+## Configuration
+
+The pipeline behavior can be customized via YAML configuration files in the `configs/` directory.
+
+### Default Configuration (`configs/default.yaml`)
+
+```yaml
+# Model settings
+object_model: yolo11m.pt          # YOLOv11 model for object detection
+pose_model: yolo11m-pose.pt       # YOLOv11 pose model (or "mediapipe")
+device: auto                      # Device selection: "auto", "cpu", "mps", or "cuda"
+
+# Pose estimation settings
+pad_ratio: 0.5                    # Padding around bounding box for pose detection
+conf_min: 0.2                     # Minimum confidence for keypoint visualization
+
+# Smoothing settings
+smoothing:
+  kind: none                      # Smoothing type: "none", "ema", or "one_euro"
+  # For EMA smoothing:
+  # alpha: 0.7                    # Higher = less smoothing
+  # For One-Euro filter:
+  # freq: 30
+  # min_cutoff: 5.0
+  # beta: 0.001
+
+# Tracker settings
+tracker:
+  track_high_thresh: 0.6          # High confidence threshold
+  track_low_thresh: 0.1           # Low confidence threshold  
+  new_track_thresh: 0.7           # Threshold for creating new tracks
+
+# Output settings
+output_fps: null                  # Keep original FPS if null
+```
+
+### Creating Custom Configurations
+
+1. Copy `configs/default.yaml` to a new file
+2. Modify the settings as needed
+3. Use with `--config` flag:
+```bash
+python3 track.py --source video.mp4 --config configs/custom.yaml
+```
+
+## System Information
+
+When you run the script, it displays detailed system information:
+
+```
+=== System Information ===
+Platform: Darwin arm64
+Python: 3.12.11
+Processor: Apple M1 Pro
+
+PyTorch version: 2.7.1
+CUDA available: No
+Apple Silicon MPS available: Yes
+
+Device configuration: auto
+Will use device: mps
+Running on Apple Silicon GPU (Metal Performance Shaders)
+========================
+```
+
+This helps verify that GPU acceleration is properly configured.
 
 ## Tracker Comparison
 
 ### BoT-SORT (Default)
-- **Best for**: Complex multi-person scenes, occlusions, and re-identification
-- **Features**: Uses appearance features (ReID) for better tracking through occlusions
-- **Trade-off**: Slightly slower but more accurate tracking
+- **Best for**: Complex scenes with occlusions
+- **Features**: Uses appearance features (ReID) for robust tracking
+- **Trade-off**: Slightly slower but more accurate
 
 ### OC-SORT
 - **Best for**: Simple scenes with predictable motion
-- **Features**: Lightweight, motion-based tracking without appearance features
+- **Features**: Lightweight, motion-based tracking
 - **Trade-off**: Faster but may struggle with occlusions
-
-## What to Expect
-
-When you run the script:
-
-1. **First run**: The YOLOv11 and ReID models will download automatically (one-time download)
-2. **Processing**: You'll see frame-by-frame detection results in the terminal
-3. **Output**: Each detected person will have:
-   - A bounding box drawn around them
-   - A unique tracker ID (e.g., "ID: 1", "ID: 2")
-   - Persistent tracking even if temporarily occluded
-
-### Terminal Output Example
-```
-Loading YOLOv11 model (will auto-download if needed)...
-Using device: mps
-Using BotSort tracker
-Processing video: ski_run.mp4
-Output will be saved to: ski_run_with_box.mp4
-
-0: 640x544 1 person, 1 skis, 45.2ms
-0: 640x544 1 person, 1 skis, 43.6ms
-...
-Processing complete! Output saved to: ski_run_with_box.mp4
-```
-
-## Supported Video Formats
-
-The script supports all common video formats including:
-- `.mp4`
-- `.mov`
-- `.avi`
-- `.mkv`
-- `.webm`
-
-## Performance Notes
-
-The script is optimized for maximum tracking accuracy by:
-- Using the YOLOv11 Medium model for better detection
-- BoT-SORT with ReID for robust tracking through occlusions
-- GPU acceleration when available (CUDA or Apple Silicon)
-
-Processing speed depends on:
-- Video resolution
-- Number of people in the frame
-- Hardware capabilities
-- Chosen tracker (OC-SORT is faster than BoT-SORT)
 
 ## Troubleshooting
 
-### Virtual Environment Not Activated
-If you see "ModuleNotFoundError", ensure the virtual environment is activated:
+### Models Download Slowly
+The first run will download the YOLO models (~50MB each). Subsequent runs use cached models.
+
+### Running on CPU Warning
+If you see "WARNING: Running on CPU", check:
+- CUDA installation (NVIDIA GPUs)
+- PyTorch version compatibility
+- Use `--config` to manually set device
+
+### No Pose Detection
+Pose estimation only works when object tracking is also enabled and a person is detected.
+
+### Video Codec Issues
+If output videos don't play, try installing:
 ```bash
-source venv/bin/activate  # macOS/Linux
+pip install opencv-contrib-python
 ```
 
-### Model Download Issues
-If the model fails to download automatically, you can manually download it:
-```bash
-python3 -c "from ultralytics import YOLO; model = YOLO('yolo11m.pt')"
+## Performance Tips
+
+1. **Use GPU acceleration** when available (CUDA or MPS)
+2. **Adjust detection stages** - run only what you need
+3. **Configure smoothing** - disable for lowest latency
+4. **Choose appropriate tracker** - OC-SORT for speed, BoT-SORT for accuracy
+
+## Project Structure
+
+```
+poser/
+├── track.py                # Main entry point
+├── detect_objects.py       # Object detection and tracking module
+├── detect_pose.py          # Pose estimation module
+├── utils/                  # Utility modules
+│   ├── smoothing.py       # Keypoint smoothing filters
+│   ├── geometry.py        # Bounding box operations
+│   └── visual.py          # Drawing utilities
+├── configs/               # Configuration files
+│   └── default.yaml       # Default settings
+├── out/                   # Default output directory
+└── requirements.txt       # Python dependencies
 ```
 
-### Video Not Found
-Ensure you're providing the correct path to your video file. Use absolute paths if relative paths don't work:
-```bash
-python3 track_skier.py --source /absolute/path/to/video.mp4
-```
+## Requirements
 
-### Python Version Requirements
-This project requires Python 3.10 or higher for the boxmot library to work correctly.
+- Python 3.10+
+- CUDA-capable GPU (optional, for NVIDIA acceleration)
+- Apple Silicon Mac (optional, for MPS acceleration)
+- ~2GB disk space for models and dependencies
