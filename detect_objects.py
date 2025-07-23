@@ -25,7 +25,7 @@ class ObjectDetector:
         
     def load_model(self, cfg: dict) -> YOLO:
         """Instantiate YOLO v11 with weights from config."""
-        model_path = cfg.get('object_model', 'yolo11m.pt')
+        model_path = cfg.get('object_model', 'models/yolo11m.pt')
         print(f"Loading YOLO model: {model_path}")
         model = YOLO(model_path)
         
@@ -49,7 +49,7 @@ class ObjectDetector:
         tracker_cfg = cfg.get('tracker', {})
         
         self.tracker = BotSort(
-            reid_weights=Path('osnet_x0_25_msmt17.pt'),
+            reid_weights=Path('models/osnet_x0_25_msmt17.pt'),
             device=self.device,
             half=False,
             track_high_thresh=tracker_cfg.get('track_high_thresh', 0.6),

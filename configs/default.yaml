@@ -1,5 +1,5 @@
-object_model: yolo11m.pt
-pose_model: yolo11x-pose.pt       # or "mediapipe"
+object_model: models/yolo11m.pt
+pose_model: models/yolo11x-pose.pt       # YOLO pose model path
 device: auto                     # "auto" | "cpu" | "mps" | "cuda"
 pad_ratio: 0.5
 conf_min: 0.2

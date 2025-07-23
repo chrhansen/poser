@@ -18,7 +18,7 @@ class YOLOPoseDetector(PoseDetectorBase):
     def __init__(self, cfg: dict):
         """Initialize YOLO-Pose detector."""
         super().__init__(cfg)
-        self.model_path = cfg.get('pose_model', 'yolov8m-pose.pt')
+        self.model_path = cfg.get('pose_model', 'models/yolo11x-pose.pt')
         self.target_size = 768  # Optimal size for larger YOLO models
         
     def load_model(self, cfg: dict):
