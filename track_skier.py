@@ -61,7 +61,7 @@ def main():
 
     print(f"Loading YOLOv11 model (will auto-download if needed)...")
     model = YOLO('yolo11m.pt')  # Using medium model for better accuracy
-    
+
     # Check if GPU is available (CUDA or MPS)
     if torch.cuda.is_available():
         device = "cuda"
@@ -70,7 +70,7 @@ def main():
     else:
         device = "cpu"
     print(f"Using device: {device}")
-    
+
     # Initialize tracker
     if args.tracker == "botsort":
         tracker = BotSort(
@@ -104,19 +104,19 @@ def main():
     label_annotator = sv.LabelAnnotator()
 
     video_info = sv.VideoInfo.from_video_path(str(source_path))
-    
+
     print(f"Processing video: {source_path}")
     print(f"Output will be saved to: {target_path}")
-    
+
     with sv.VideoSink(str(target_path), video_info) as sink:
         for frame_idx, frame in enumerate(sv.get_video_frames_generator(source_path=str(source_path))):
             results = model(frame, device=device)[0]
-            
+
             detections = sv.Detections.from_ultralytics(results)
-            
+
             # Filter for person class (class_id == 0)
             detections = detections[detections.class_id == 0]
-            
+
             # Convert to tracker format
             if len(detections) > 0:
                 dets = []
@@ -124,29 +124,29 @@ def main():
                     x1, y1, x2, y2 = detections.xyxy[i]
                     conf = detections.confidence[i] if detections.confidence is not None else 1.0
                     dets.append([x1, y1, x2, y2, conf, 0])  # 0 is class_id for person
-                
+
                 dets = np.array(dets)
             else:
                 dets = np.empty((0, 6))
-            
+
             # Update tracker
             outputs = tracker.update(dets, frame)
-            
+
             if len(outputs) > 0:
                 # Convert back to supervision format
                 tracked_boxes = outputs[:, :4]
                 tracked_ids = outputs[:, 4].astype(int)
                 tracked_confidences = outputs[:, 5] if outputs.shape[1] > 5 else np.ones(len(outputs))
-                
+
                 tracked_detections = sv.Detections(
                     xyxy=tracked_boxes,
                     confidence=tracked_confidences,
                     class_id=np.zeros(len(tracked_boxes), dtype=int),
                     tracker_id=tracked_ids
                 )
-                
+
                 labels = [f"ID: {tracker_id}" for tracker_id in tracked_detections.tracker_id]
-                
+
                 annotated_frame = bounding_box_annotator.annotate(
                     scene=frame.copy(),
                     detections=tracked_detections
@@ -156,7 +156,7 @@ def main():
                     detections=tracked_detections,
                     labels=labels
                 )
-                
+
                 sink.write_frame(annotated_frame)
             else:
                 sink.write_frame(frame)
