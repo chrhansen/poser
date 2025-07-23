@@ -1,3 +1,7 @@
 ultralytics
 supervision[video]
 numpy
+# For StrongSORT tracking
+boxmot
+torch
+torchvision
