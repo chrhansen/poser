@@ -91,10 +91,11 @@ class PoseDetector:
             resized = cv2.resize(roi, (256, 256))
             scale = 256.0 / max(roi.shape[:2])
         else:  # YOLO
-            # Scale so max dimension <= 640 and divisible by 32
+            # For larger models (x-size), use 768px for better limb detection
+            target_size = 768
             h, w = roi.shape[:2]
             max_dim = max(h, w)
-            scale = min(640.0 / max_dim, 1.0)
+            scale = min(target_size / max_dim, 1.0)
             new_h = int(h * scale)
             new_w = int(w * scale)
             # Make divisible by 32
@@ -125,7 +126,8 @@ class PoseDetector:
                 return np.array(keypoints)
             return None
         else:  # YOLO
-            results = self.model(image, verbose=False)
+            # Pass imgsz and conf parameters for better detection
+            results = self.model(image, imgsz=768, conf=0.2, verbose=False)
             if results and len(results) > 0:
                 result = results[0]
                 if hasattr(result, 'keypoints') and result.keypoints is not None:
