@@ -168,7 +168,7 @@ def draw_skeleton(
             # Get confidence value (last element)
             conf_a = keypoints[kpt_a, -1]
             conf_b = keypoints[kpt_b, -1]
-            
+
             if (
                 conf_a >= conf_threshold
                 and conf_b >= conf_threshold

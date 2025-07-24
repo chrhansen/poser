@@ -27,24 +27,26 @@ class MetricsLogger:
         # Setup file paths
         self.distances_file = self.output_dir / f"{self.video_name}_distances.csv"
         self.landmarks_file = self.output_dir / f"{self.video_name}_landmarks.csv"
-        self.world_landmarks_file = self.output_dir / f"{self.video_name}_world_landmarks.csv"
+        self.world_landmarks_file = (
+            self.output_dir / f"{self.video_name}_world_landmarks.csv"
+        )
 
         # Open files and create writers
         self._init_files()
 
     def _init_files(self):
         """Initialize CSV files with headers."""
-        # Distances file
+        # Distances file (now for shin angles)
         self.distances_fp = open(self.distances_file, "w", newline="")
         self.distances_writer = csv.writer(self.distances_fp)
         self.distances_writer.writerow(
             [
                 "frame_number",
                 "timestamp_ms",
-                "knee_distance",
-                "ankle_distance",
-                "knee_distance_ma",
-                "ankle_distance_ma",
+                "shin_angle_2d",
+                "shin_angle_2d_ma",
+                "shin_angle_3d",
+                "shin_angle_3d_ma",
             ]
         )
 
@@ -63,46 +65,46 @@ class MetricsLogger:
                 "visibility",
             ]
         )
-        
+
         # World landmarks file (only created if world landmarks are available)
         self.world_landmarks_fp = None
         self.world_landmarks_writer = None
         self.has_world_landmarks = False
 
-    def log_distances(
+    def log_shin_angles(
         self,
         frame_number: int,
         timestamp_ms: float,
-        knee_distance: float | None,
-        ankle_distance: float | None,
-        knee_distance_ma: float | None = None,
-        ankle_distance_ma: float | None = None,
+        shin_angle_2d: float | None,
+        shin_angle_2d_ma: float | None = None,
+        shin_angle_3d: float | None = None,
+        shin_angle_3d_ma: float | None = None,
     ):
         """
-        Log distance measurements for a frame.
+        Log shin angle measurements for a frame.
 
         Args:
             frame_number: Current frame number
             timestamp_ms: Timestamp in milliseconds
-            knee_distance: Distance between knees (None if not detected)
-            ankle_distance: Distance between ankles (None if not detected)
-            knee_distance_ma: Moving average of knee distance (None if not available)
-            ankle_distance_ma: Moving average of ankle distance (None if not available)
+            shin_angle_2d: Shin angle in 2D (frame coordinates) in degrees
+            shin_angle_2d_ma: Moving average of 2D shin angle
+            shin_angle_3d: Shin angle in 3D (world coordinates) in degrees (None for YOLO)
+            shin_angle_3d_ma: Moving average of 3D shin angle
         """
         # Convert None to empty string for CSV
-        knee_dist_str = "" if knee_distance is None else f"{knee_distance:.6f}"
-        ankle_dist_str = "" if ankle_distance is None else f"{ankle_distance:.6f}"
-        knee_ma_str = "" if knee_distance_ma is None else f"{knee_distance_ma:.6f}"
-        ankle_ma_str = "" if ankle_distance_ma is None else f"{ankle_distance_ma:.6f}"
+        angle_2d_str = "" if shin_angle_2d is None else f"{shin_angle_2d:.2f}"
+        angle_2d_ma_str = "" if shin_angle_2d_ma is None else f"{shin_angle_2d_ma:.2f}"
+        angle_3d_str = "" if shin_angle_3d is None else f"{shin_angle_3d:.2f}"
+        angle_3d_ma_str = "" if shin_angle_3d_ma is None else f"{shin_angle_3d_ma:.2f}"
 
         self.distances_writer.writerow(
             [
                 frame_number,
                 f"{timestamp_ms:.2f}",
-                knee_dist_str,
-                ankle_dist_str,
-                knee_ma_str,
-                ankle_ma_str,
+                angle_2d_str,
+                angle_2d_ma_str,
+                angle_3d_str,
+                angle_3d_ma_str,
             ]
         )
 
@@ -153,7 +155,7 @@ class MetricsLogger:
     ):
         """
         Log world landmark positions for all tracked landmarks.
-        
+
         Args:
             frame_number: Current frame number
             timestamp_ms: Timestamp in milliseconds
@@ -178,10 +180,10 @@ class MetricsLogger:
                 ]
             )
             self.has_world_landmarks = True
-            
+
         if self.world_landmarks_writer is None:
             return
-            
+
         # Write each landmark's world coordinates
         for name, (x, y, z, visibility) in landmarks.items():
             idx = landmark_indices.get(name, -1)
@@ -197,7 +199,7 @@ class MetricsLogger:
                     f"{visibility:.6f}",
                 ]
             )
-            
+
         # Flush to ensure data is written
         self.world_landmarks_fp.flush()
 
@@ -205,13 +207,13 @@ class MetricsLogger:
         """Close all open files."""
         self.distances_fp.close()
         self.landmarks_fp.close()
-        
+
         if self.world_landmarks_fp:
             self.world_landmarks_fp.close()
 
         print("Metrics saved to:")
         print(f"  - Distances: {self.distances_file}")
         print(f"  - Landmarks: {self.landmarks_file}")
-        
+
         if self.has_world_landmarks:
             print(f"  - World landmarks: {self.world_landmarks_file}")

@@ -46,8 +46,8 @@ class PoseMetricsCalculator:
         self.window_size = window_size
 
         # Buffers for moving average calculation
-        self.knee_distance_buffer = []
-        self.ankle_distance_buffer = []
+        self.shin_angle_2d_buffer = []
+        self.shin_angle_3d_buffer = []
 
         if detector_type == "mediapipe":
             self.landmarks = self.MEDIAPIPE_LANDMARKS
@@ -56,25 +56,25 @@ class PoseMetricsCalculator:
         else:
             raise ValueError(f"Unknown detector type: {detector_type}")
 
-    def calculate_distances(self, keypoints: np.ndarray) -> dict[str, float | None]:
+    def calculate_shin_angles(
+        self, keypoints: np.ndarray, is_world_coords: bool = False
+    ) -> dict[str, float | None]:
         """
-        Calculate knee and ankle distances from keypoints.
+        Calculate the angle between the two shin vectors (ankle to knee).
 
         Args:
             keypoints: Array of shape (N, 3) with (x, y, conf) or (N, 4) with (x, y, z, conf)
-                      For YOLO, coordinates are in pixels (2D)
-                      For MediaPipe, coordinates can be 3D world coordinates
+            is_world_coords: If True, coordinates are in meters (3D world coordinates)
+                           If False, coordinates are in pixels (2D frame coordinates)
 
         Returns:
-            Dictionary with 'knee_distance', 'ankle_distance', 'knee_distance_ma', and 'ankle_distance_ma'
-            Returns None for distances if landmarks are not detected
+            Dictionary with 'shin_angle', 'shin_angle_ma'
+            Angle is in degrees, where 0° means perfectly parallel shins
         """
         if keypoints is None or len(keypoints) == 0:
             return {
-                "knee_distance": None,
-                "ankle_distance": None,
-                "knee_distance_ma": None,
-                "ankle_distance_ma": None,
+                "shin_angle": None,
+                "shin_angle_ma": None,
             }
 
         # Extract relevant landmarks
@@ -83,23 +83,22 @@ class PoseMetricsCalculator:
         left_ankle = self._get_landmark(keypoints, "LEFT_ANKLE")
         right_ankle = self._get_landmark(keypoints, "RIGHT_ANKLE")
 
-        # Calculate distances
-        knee_distance = self._calculate_euclidean_distance(left_knee, right_knee)
-        ankle_distance = self._calculate_euclidean_distance(left_ankle, right_ankle)
+        # Calculate shin angle
+        shin_angle = self._calculate_shin_angle(
+            left_knee, left_ankle, right_knee, right_ankle
+        )
 
-        # Update buffers and calculate moving averages
-        knee_ma = self._update_buffer_and_calculate_ma(
-            self.knee_distance_buffer, knee_distance
+        # Select appropriate buffer based on coordinate type
+        buffer = (
+            self.shin_angle_3d_buffer if is_world_coords else self.shin_angle_2d_buffer
         )
-        ankle_ma = self._update_buffer_and_calculate_ma(
-            self.ankle_distance_buffer, ankle_distance
-        )
+
+        # Update buffer and calculate moving average
+        angle_ma = self._update_buffer_and_calculate_ma(buffer, shin_angle)
 
         return {
-            "knee_distance": knee_distance,
-            "ankle_distance": ankle_distance,
-            "knee_distance_ma": knee_ma,
-            "ankle_distance_ma": ankle_ma,
+            "shin_angle": shin_angle,
+            "shin_angle_ma": angle_ma,
         }
 
     def _get_landmark(
@@ -131,32 +130,52 @@ class PoseMetricsCalculator:
         else:
             return None
 
-    def _calculate_euclidean_distance(
-        self, point1: np.ndarray | None, point2: np.ndarray | None
+    def _calculate_shin_angle(
+        self,
+        knee_L: np.ndarray | None,
+        ankle_L: np.ndarray | None,
+        knee_R: np.ndarray | None,
+        ankle_R: np.ndarray | None,
     ) -> float | None:
         """
-        Calculate Euclidean distance between two points.
+        Calculate the angle between the two shin vectors.
 
         Args:
-            point1: First point coordinates [x, y] or [x, y, z]
-            point2: Second point coordinates [x, y] or [x, y, z]
+            knee_L: Left knee coordinates [x, y] or [x, y, z]
+            ankle_L: Left ankle coordinates [x, y] or [x, y, z]
+            knee_R: Right knee coordinates [x, y] or [x, y, z]
+            ankle_R: Right ankle coordinates [x, y] or [x, y, z]
 
         Returns:
-            Euclidean distance or None if either point is None
+            Angle in degrees between the two shin vectors (0° = parallel)
         """
-        if point1 is None or point2 is None:
+        if any(p is None for p in [knee_L, ankle_L, knee_R, ankle_R]):
             return None
 
-        # Ensure both points have the same dimensionality
-        if len(point1) != len(point2):
-            # If one is 2D and other is 3D, pad the 2D with 0 for z
-            if len(point1) == 2 and len(point2) == 3:
-                point1 = np.append(point1, 0)
-            elif len(point1) == 3 and len(point2) == 2:
-                point2 = np.append(point2, 0)
+        # Build shin vectors (from ankle to knee)
+        vL = knee_L - ankle_L  # Left shin vector
+        vR = knee_R - ankle_R  # Right shin vector
 
-        # Calculate distance using numpy
-        return float(np.linalg.norm(point2 - point1))
+        # Normalize vectors to avoid numerical issues
+        vL_norm = np.linalg.norm(vL)
+        vR_norm = np.linalg.norm(vR)
+
+        if vL_norm == 0 or vR_norm == 0:
+            return None
+
+        vL = vL / vL_norm
+        vR = vR / vR_norm
+
+        # Calculate angle using dot product
+        # cos(θ) = (vL · vR) / (|vL| |vR|)
+        # Since vectors are normalized, cos(θ) = vL · vR
+        cos_theta = np.clip(np.dot(vL, vR), -1.0, 1.0)
+
+        # Convert to degrees
+        angle_rad = np.arccos(cos_theta)
+        angle_deg = np.degrees(angle_rad)
+
+        return float(angle_deg)
 
     def get_all_landmark_positions(
         self, keypoints: np.ndarray

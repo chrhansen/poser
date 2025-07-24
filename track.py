@@ -191,9 +191,11 @@ def main():
     # Create output directory with subfolder based on input filename
     base_output_dir = Path(args.save_dir)
     base_output_dir.mkdir(exist_ok=True)
-    
+
     # Create subfolder based on source filename (replace dots with underscores)
-    source_folder_name = source_path.stem.replace('.', '_') + source_path.suffix.replace('.', '_')
+    source_folder_name = source_path.stem.replace(
+        ".", "_"
+    ) + source_path.suffix.replace(".", "_")
     save_dir = base_output_dir / source_folder_name
     save_dir.mkdir(exist_ok=True)
 
@@ -351,46 +353,67 @@ def main():
                 timestamp_ms = (frame_idx / fps) * 1000
 
                 if keypoints is not None:
-                    # Calculate distances
-                    distances = metrics_calculator.calculate_distances(keypoints)
-
-                    # Log distances
-                    metrics_logger.log_distances(
-                        frame_idx,
-                        timestamp_ms,
-                        distances["knee_distance"],
-                        distances["ankle_distance"],
-                        distances["knee_distance_ma"],
-                        distances["ankle_distance_ma"],
+                    # Calculate shin angles for 2D frame coordinates
+                    angles_2d = metrics_calculator.calculate_shin_angles(
+                        keypoints, is_world_coords=False
                     )
+
+                    # Initialize 3D angles as None (will be filled for MediaPipe)
+                    angles_3d = {"shin_angle": None, "shin_angle_ma": None}
 
                     # Log all landmarks
                     landmarks = metrics_calculator.get_all_landmark_positions(keypoints)
                     metrics_logger.log_all_landmarks(
                         frame_idx, timestamp_ms, landmarks, metrics_calculator.landmarks
                     )
-                    
-                    # Log world landmarks if available (MediaPipe only)
+
+                    # Log world landmarks and calculate 3D angles if available (MediaPipe only)
                     if args.pose_detector == "mediapipe" and main_bbox is not None:
-                        world_keypoints = pose_detector.get_world_landmarks(frame, main_bbox)
+                        world_keypoints = pose_detector.get_world_landmarks(
+                            frame, main_bbox
+                        )
                         if world_keypoints is not None:
-                            world_landmarks = metrics_calculator.get_all_landmark_positions(world_keypoints)
-                            metrics_logger.log_world_landmarks(
-                                frame_idx, timestamp_ms, world_landmarks, metrics_calculator.landmarks
+                            # Calculate shin angles for 3D world coordinates
+                            angles_3d = metrics_calculator.calculate_shin_angles(
+                                world_keypoints, is_world_coords=True
                             )
+
+                            world_landmarks = (
+                                metrics_calculator.get_all_landmark_positions(
+                                    world_keypoints
+                                )
+                            )
+                            metrics_logger.log_world_landmarks(
+                                frame_idx,
+                                timestamp_ms,
+                                world_landmarks,
+                                metrics_calculator.landmarks,
+                            )
+
+                    # Log shin angles (both 2D and 3D)
+                    metrics_logger.log_shin_angles(
+                        frame_idx,
+                        timestamp_ms,
+                        angles_2d["shin_angle"],
+                        angles_2d["shin_angle_ma"],
+                        angles_3d["shin_angle"],
+                        angles_3d["shin_angle_ma"],
+                    )
 
                     # Update real-time plot if enabled
                     if metrics_plotter:
                         metrics_plotter.update_realtime_plot(
                             timestamp_ms,
-                            distances["knee_distance"],
-                            distances["ankle_distance"],
-                            distances["knee_distance_ma"],
-                            distances["ankle_distance_ma"],
+                            angles_2d["shin_angle"],
+                            angles_2d["shin_angle_ma"],
+                            angles_3d["shin_angle"],
+                            angles_3d["shin_angle_ma"],
                         )
                 else:
                     # No keypoints detected, log empty values
-                    metrics_logger.log_distances(frame_idx, timestamp_ms, None, None)
+                    metrics_logger.log_shin_angles(
+                        frame_idx, timestamp_ms, None, None, None, None
+                    )
 
             # Write frames
             if "bbox" in writers and bbox_frame is not None:

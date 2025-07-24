@@ -29,9 +29,10 @@ class MediaPipePoseDetector(PoseDetectorBase):
     def load_model(self, cfg: dict):
         """Load MediaPipe Pose Landmarker model."""
         print(f"Loading MediaPipe Pose Landmarker model: {self.model_path}")
-        
+
         # Check if model exists, if not download it
         import os
+
         if not os.path.exists(self.model_path):
             self._download_model()
 
@@ -216,77 +217,84 @@ class MediaPipePoseDetector(PoseDetectorBase):
 
         return kpts
 
-    def get_world_landmarks(self, frame: np.ndarray, roi_bbox: np.ndarray) -> np.ndarray | None:
+    def get_world_landmarks(
+        self, frame: np.ndarray, roi_bbox: np.ndarray
+    ) -> np.ndarray | None:
         """
         Get world landmarks from MediaPipe (in meters, centered at hips).
-        
+
         Args:
             frame: Original video frame
             roi_bbox: Bounding box [x1, y1, x2, y2] of the person
-            
+
         Returns:
             World landmarks array of shape (33, 4) with (x, y, z, visibility) in meters,
             or None if not available
         """
         if self.detector is None:
             raise RuntimeError("MediaPipe Pose Landmarker not initialized")
-            
+
         # Crop and prepare image same as detect()
         roi, transform_info = self._crop_roi(frame, roi_bbox)
         square_roi, padding_info = self._make_square(roi)
         resized = cv2.resize(square_roi, (self.target_size, self.target_size))
-        
+
         # Convert BGR to RGB
         image_rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
-        
+
         # Run detection - use current timestamp to avoid conflicts
         # Each call needs a unique timestamp for MediaPipe's video mode
         timestamp_ms = self.last_timestamp_ms + 1
         detection_result = self.detector.detect_for_video(mp_image, timestamp_ms)
-        
-        if detection_result.pose_world_landmarks and len(detection_result.pose_world_landmarks) > 0:
+
+        if (
+            detection_result.pose_world_landmarks
+            and len(detection_result.pose_world_landmarks) > 0
+        ):
             world_landmarks = detection_result.pose_world_landmarks[0]
             world_keypoints = []
-            
+
             for landmark in world_landmarks:
                 # World coordinates are in meters
                 x = landmark.x
                 y = landmark.y
                 z = landmark.z
-                visibility = landmark.visibility if hasattr(landmark, "visibility") else 1.0
+                visibility = (
+                    landmark.visibility if hasattr(landmark, "visibility") else 1.0
+                )
                 world_keypoints.append([x, y, z, visibility])
-                
+
             return np.array(world_keypoints)
-            
+
         return None
 
     def _download_model(self):
         """Download the MediaPipe pose model if it doesn't exist."""
         import os
         import urllib.request
-        
+
         # MediaPipe model URLs
         model_urls = {
             "pose_landmarker_heavy.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task",
             "pose_landmarker_full.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
-            "pose_landmarker_lite.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
+            "pose_landmarker_lite.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
         }
-        
+
         # Extract just the filename for URL lookup
         model_filename = os.path.basename(self.model_path)
-        
+
         if model_filename not in model_urls:
             raise ValueError(f"Unknown MediaPipe model: {model_filename}")
-        
+
         # Create models directory if it doesn't exist
         os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
-        
+
         url = model_urls[model_filename]
         print(f"Downloading MediaPipe model from {url}...")
-        
+
         try:
             urllib.request.urlretrieve(url, self.model_path)
             print(f"Successfully downloaded model to {self.model_path}")
         except Exception as e:
-            raise RuntimeError(f"Failed to download MediaPipe model: {e}")
+            raise RuntimeError(f"Failed to download MediaPipe model: {e}") from e

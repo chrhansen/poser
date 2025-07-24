@@ -137,7 +137,7 @@ class YOLOPoseDetector(PoseDetectorBase):
                     kpts_with_z = np.zeros((kpts.shape[0], 4))
                     kpts_with_z[:, 0] = kpts[:, 0]  # x
                     kpts_with_z[:, 1] = kpts[:, 1]  # y
-                    kpts_with_z[:, 2] = 0.0          # z (always 0 for YOLO)
+                    kpts_with_z[:, 2] = 0.0  # z (always 0 for YOLO)
                     kpts_with_z[:, 3] = kpts[:, 2]  # confidence
                     return kpts_with_z
         return None
