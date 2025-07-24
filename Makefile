@@ -24,10 +24,10 @@ format:
 	black .
 
 test:
-	pytest tests/ -v
+	PYTHONPATH=. pytest tests/ -v
 
 test-cov:
-	pytest tests/ -v --cov=src --cov-report=html --cov-report=term
+	PYTHONPATH=. pytest tests/ -v --cov=src --cov=utils --cov-report=html --cov-report=term
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
