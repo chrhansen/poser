@@ -37,7 +37,14 @@ class MetricsLogger:
         self.distances_fp = open(self.distances_file, "w", newline="")
         self.distances_writer = csv.writer(self.distances_fp)
         self.distances_writer.writerow(
-            ["frame_number", "timestamp_ms", "knee_distance", "ankle_distance"]
+            [
+                "frame_number",
+                "timestamp_ms",
+                "knee_distance",
+                "ankle_distance",
+                "knee_distance_ma",
+                "ankle_distance_ma",
+            ]
         )
 
         # Landmarks file
@@ -62,6 +69,8 @@ class MetricsLogger:
         timestamp_ms: float,
         knee_distance: float | None,
         ankle_distance: float | None,
+        knee_distance_ma: float | None = None,
+        ankle_distance_ma: float | None = None,
     ):
         """
         Log distance measurements for a frame.
@@ -71,13 +80,24 @@ class MetricsLogger:
             timestamp_ms: Timestamp in milliseconds
             knee_distance: Distance between knees (None if not detected)
             ankle_distance: Distance between ankles (None if not detected)
+            knee_distance_ma: Moving average of knee distance (None if not available)
+            ankle_distance_ma: Moving average of ankle distance (None if not available)
         """
         # Convert None to empty string for CSV
         knee_dist_str = "" if knee_distance is None else f"{knee_distance:.6f}"
         ankle_dist_str = "" if ankle_distance is None else f"{ankle_distance:.6f}"
+        knee_ma_str = "" if knee_distance_ma is None else f"{knee_distance_ma:.6f}"
+        ankle_ma_str = "" if ankle_distance_ma is None else f"{ankle_distance_ma:.6f}"
 
         self.distances_writer.writerow(
-            [frame_number, f"{timestamp_ms:.2f}", knee_dist_str, ankle_dist_str]
+            [
+                frame_number,
+                f"{timestamp_ms:.2f}",
+                knee_dist_str,
+                ankle_dist_str,
+                knee_ma_str,
+                ankle_ma_str,
+            ]
         )
 
         # Flush to ensure data is written

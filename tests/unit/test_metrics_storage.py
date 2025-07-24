@@ -25,8 +25,8 @@ class TestMetricsLogger:
         logger = MetricsLogger("test_video.mp4", str(temp_output_dir))
 
         # Log some test data
-        logger.log_distances(0, 0.0, 40.5, 50.3)
-        logger.log_distances(1, 33.3, 42.1, 51.7)
+        logger.log_distances(0, 0.0, 40.5, 50.3, 41.2, 50.8)
+        logger.log_distances(1, 33.3, 42.1, 51.7, 41.3, 51.0)
         logger.log_distances(2, 66.6, None, None)  # Test None values
 
         logger.close()
@@ -42,10 +42,12 @@ class TestMetricsLogger:
             "timestamp_ms",
             "knee_distance",
             "ankle_distance",
+            "knee_distance_ma",
+            "ankle_distance_ma",
         ]
-        assert rows[1] == ["0", "0.00", "40.500000", "50.300000"]
-        assert rows[2] == ["1", "33.30", "42.100000", "51.700000"]
-        assert rows[3] == ["2", "66.60", "", ""]  # None values become empty strings
+        assert rows[1] == ["0", "0.00", "40.500000", "50.300000", "41.200000", "50.800000"]
+        assert rows[2] == ["1", "33.30", "42.100000", "51.700000", "41.300000", "51.000000"]
+        assert rows[3] == ["2", "66.60", "", "", "", ""]  # None values become empty strings
 
     def test_log_all_landmarks(self, temp_output_dir):
         """Test logging all landmark positions."""

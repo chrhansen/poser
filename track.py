@@ -360,6 +360,8 @@ def main():
                         timestamp_ms,
                         distances["knee_distance"],
                         distances["ankle_distance"],
+                        distances["knee_distance_ma"],
+                        distances["ankle_distance_ma"],
                     )
 
                     # Log all landmarks
@@ -374,6 +376,8 @@ def main():
                             timestamp_ms,
                             distances["knee_distance"],
                             distances["ankle_distance"],
+                            distances["knee_distance_ma"],
+                            distances["ankle_distance_ma"],
                         )
                 else:
                     # No keypoints detected, log empty values

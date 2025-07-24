@@ -19,8 +19,12 @@ class MetricsPlotter:
         self.ax = None
         self.knee_line = None
         self.ankle_line = None
+        self.knee_ma_line = None
+        self.ankle_ma_line = None
         self.knee_data = []
         self.ankle_data = []
+        self.knee_ma_data = []
+        self.ankle_ma_data = []
         self.time_data = []
         self.update_interval = 5  # Update plot every 5 frames
         self.frame_count = 0
@@ -40,16 +44,27 @@ class MetricsPlotter:
         df["knee_distance"] = pd.to_numeric(df["knee_distance"], errors="coerce")
         df["ankle_distance"] = pd.to_numeric(df["ankle_distance"], errors="coerce")
 
+        # Check if moving average columns exist
+        has_ma = "knee_distance_ma" in df.columns and "ankle_distance_ma" in df.columns
+        if has_ma:
+            df["knee_distance_ma"] = pd.to_numeric(
+                df["knee_distance_ma"], errors="coerce"
+            )
+            df["ankle_distance_ma"] = pd.to_numeric(
+                df["ankle_distance_ma"], errors="coerce"
+            )
+
         # Create figure
         plt.figure(figsize=(12, 6))
 
-        # Plot data
+        # Plot raw data
         plt.plot(
             df["timestamp_ms"],
             df["knee_distance"],
             label="Knee Distance",
             color="blue",
             linewidth=2,
+            alpha=0.7,
         )
         plt.plot(
             df["timestamp_ms"],
@@ -57,7 +72,27 @@ class MetricsPlotter:
             label="Ankle Distance",
             color="red",
             linewidth=2,
+            alpha=0.7,
         )
+
+        # Plot moving averages if available
+        if has_ma:
+            plt.plot(
+                df["timestamp_ms"],
+                df["knee_distance_ma"],
+                label="Knee Distance (MA)",
+                color="darkblue",
+                linewidth=2,
+                linestyle="--",
+            )
+            plt.plot(
+                df["timestamp_ms"],
+                df["ankle_distance_ma"],
+                label="Ankle Distance (MA)",
+                color="darkred",
+                linewidth=2,
+                linestyle="--",
+            )
 
         # Customize plot
         plt.xlabel("Time (ms)", fontsize=12)
@@ -88,10 +123,16 @@ class MetricsPlotter:
 
         # Initialize empty lines
         (self.knee_line,) = self.ax.plot(
-            [], [], "b-", label="Knee Distance", linewidth=2
+            [], [], "b-", label="Knee Distance", linewidth=2, alpha=0.7
         )
         (self.ankle_line,) = self.ax.plot(
-            [], [], "r-", label="Ankle Distance", linewidth=2
+            [], [], "r-", label="Ankle Distance", linewidth=2, alpha=0.7
+        )
+        (self.knee_ma_line,) = self.ax.plot(
+            [], [], "b--", label="Knee Distance (MA)", linewidth=2
+        )
+        (self.ankle_ma_line,) = self.ax.plot(
+            [], [], "r--", label="Ankle Distance (MA)", linewidth=2
         )
 
         # Setup plot
@@ -115,6 +156,8 @@ class MetricsPlotter:
         timestamp_ms: float,
         knee_distance: float | None,
         ankle_distance: float | None,
+        knee_distance_ma: float | None = None,
+        ankle_distance_ma: float | None = None,
     ):
         """
         Update the real-time plot with new data.
@@ -123,6 +166,8 @@ class MetricsPlotter:
             timestamp_ms: Current timestamp in milliseconds
             knee_distance: Knee distance measurement
             ankle_distance: Ankle distance measurement
+            knee_distance_ma: Moving average of knee distance
+            ankle_distance_ma: Moving average of ankle distance
         """
         self.frame_count += 1
 
@@ -130,6 +175,12 @@ class MetricsPlotter:
         self.time_data.append(timestamp_ms)
         self.knee_data.append(knee_distance if knee_distance is not None else np.nan)
         self.ankle_data.append(ankle_distance if ankle_distance is not None else np.nan)
+        self.knee_ma_data.append(
+            knee_distance_ma if knee_distance_ma is not None else np.nan
+        )
+        self.ankle_ma_data.append(
+            ankle_distance_ma if ankle_distance_ma is not None else np.nan
+        )
 
         # Only update plot at specified interval
         if self.frame_count % self.update_interval != 0:
@@ -138,6 +189,8 @@ class MetricsPlotter:
         # Update line data
         self.knee_line.set_data(self.time_data, self.knee_data)
         self.ankle_line.set_data(self.time_data, self.ankle_data)
+        self.knee_ma_line.set_data(self.time_data, self.knee_ma_data)
+        self.ankle_ma_line.set_data(self.time_data, self.ankle_ma_data)
 
         # Adjust axis limits
         if len(self.time_data) > 0:
@@ -149,10 +202,12 @@ class MetricsPlotter:
             # Y-axis: auto-scale with some padding
             valid_knee = [d for d in self.knee_data if not np.isnan(d)]
             valid_ankle = [d for d in self.ankle_data if not np.isnan(d)]
+            valid_knee_ma = [d for d in self.knee_ma_data if not np.isnan(d)]
+            valid_ankle_ma = [d for d in self.ankle_ma_data if not np.isnan(d)]
 
-            if valid_knee or valid_ankle:
-                all_valid = valid_knee + valid_ankle
-                y_max = max(all_valid) * 1.1 if all_valid else 100
+            all_valid = valid_knee + valid_ankle + valid_knee_ma + valid_ankle_ma
+            if all_valid:
+                y_max = max(all_valid) * 1.1
                 self.ax.set_ylim(0, y_max)
 
         # Redraw

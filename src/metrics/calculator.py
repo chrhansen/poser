@@ -26,14 +26,21 @@ class PoseMetricsCalculator:
         "RIGHT_ANKLE": 16,
     }
 
-    def __init__(self, detector_type: str = "yolo"):
+    def __init__(self, detector_type: str = "yolo", window_size: int = 3):
         """
         Initialize the metrics calculator.
 
         Args:
             detector_type: Either 'yolo' or 'mediapipe'
+            window_size: Window size for moving average calculation (default: 3)
         """
         self.detector_type = detector_type
+        self.window_size = window_size
+
+        # Buffers for moving average calculation
+        self.knee_distance_buffer = []
+        self.ankle_distance_buffer = []
+
         if detector_type == "mediapipe":
             self.landmarks = self.MEDIAPIPE_LANDMARKS
         elif detector_type == "yolo":
@@ -51,11 +58,16 @@ class PoseMetricsCalculator:
                       For MediaPipe, coordinates can be 3D world coordinates
 
         Returns:
-            Dictionary with 'knee_distance' and 'ankle_distance' in appropriate units
+            Dictionary with 'knee_distance', 'ankle_distance', 'knee_distance_ma', and 'ankle_distance_ma'
             Returns None for distances if landmarks are not detected
         """
         if keypoints is None or len(keypoints) == 0:
-            return {"knee_distance": None, "ankle_distance": None}
+            return {
+                "knee_distance": None,
+                "ankle_distance": None,
+                "knee_distance_ma": None,
+                "ankle_distance_ma": None,
+            }
 
         # Extract relevant landmarks
         left_knee = self._get_landmark(keypoints, "LEFT_KNEE")
@@ -67,7 +79,20 @@ class PoseMetricsCalculator:
         knee_distance = self._calculate_euclidean_distance(left_knee, right_knee)
         ankle_distance = self._calculate_euclidean_distance(left_ankle, right_ankle)
 
-        return {"knee_distance": knee_distance, "ankle_distance": ankle_distance}
+        # Update buffers and calculate moving averages
+        knee_ma = self._update_buffer_and_calculate_ma(
+            self.knee_distance_buffer, knee_distance
+        )
+        ankle_ma = self._update_buffer_and_calculate_ma(
+            self.ankle_distance_buffer, ankle_distance
+        )
+
+        return {
+            "knee_distance": knee_distance,
+            "ankle_distance": ankle_distance,
+            "knee_distance_ma": knee_ma,
+            "ankle_distance_ma": ankle_ma,
+        }
 
     def _get_landmark(
         self, keypoints: np.ndarray, landmark_name: str
@@ -153,3 +178,29 @@ class PoseMetricsCalculator:
             positions[name] = (float(x), float(y), float(z), float(visibility))
 
         return positions
+
+    def _update_buffer_and_calculate_ma(
+        self, buffer: list[float], value: float | None
+    ) -> float | None:
+        """
+        Update buffer with new value and calculate moving average.
+
+        Args:
+            buffer: Buffer to update
+            value: New value to add (can be None)
+
+        Returns:
+            Moving average or None if not enough valid values
+        """
+        if value is not None:
+            buffer.append(value)
+
+            # Keep only the last window_size values
+            if len(buffer) > self.window_size:
+                buffer.pop(0)
+
+            # Calculate moving average
+            if len(buffer) > 0:
+                return float(np.mean(buffer))
+
+        return None
