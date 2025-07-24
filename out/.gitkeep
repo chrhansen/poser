@@ -1,2 +1,0 @@
-# This file ensures the out directory is tracked in git
-# while actual output files are ignored via .gitignore

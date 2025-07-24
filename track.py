@@ -35,7 +35,7 @@ def parse_args():
         help="Which stages to activate (comma-separated: objects,pose)",
     )
     parser.add_argument(
-        "--save_dir", type=str, default="out", help="Output directory for videos"
+        "--save_dir", type=str, default="output", help="Output directory for all files"
     )
     parser.add_argument(
         "--no-preview", action="store_true", help="Disable live preview window"
@@ -63,12 +63,7 @@ def parse_args():
         action="store_true",
         help="Show real-time plot of distances (requires --metrics)",
     )
-    parser.add_argument(
-        "--metrics-output",
-        type=str,
-        default="output",
-        help="Output directory for metrics CSV files (default: output)",
-    )
+    # Deprecated: --metrics-output is no longer used, all outputs go to --save_dir
     return parser.parse_args()
 
 
@@ -193,8 +188,13 @@ def main():
         print(f"Error: Source file '{source_path}' does not exist.")
         return
 
-    # Create output directory
-    save_dir = Path(args.save_dir)
+    # Create output directory with subfolder based on input filename
+    base_output_dir = Path(args.save_dir)
+    base_output_dir.mkdir(exist_ok=True)
+    
+    # Create subfolder based on source filename (replace dots with underscores)
+    source_folder_name = source_path.stem.replace('.', '_') + source_path.suffix.replace('.', '_')
+    save_dir = base_output_dir / source_folder_name
     save_dir.mkdir(exist_ok=True)
 
     # Initialize detectors
@@ -217,7 +217,7 @@ def main():
 
     if args.metrics and detect_pose:
         metrics_calculator = PoseMetricsCalculator(detector_type=args.pose_detector)
-        metrics_logger = MetricsLogger(str(source_path), output_dir=args.metrics_output)
+        metrics_logger = MetricsLogger(str(source_path), output_dir=str(save_dir))
 
         if args.realtime_plot:
             metrics_plotter = MetricsPlotter()
@@ -421,9 +421,7 @@ def main():
         if metrics_plotter:
             # Save final plot if real-time plotting was enabled
             if args.realtime_plot:
-                plot_path = (
-                    Path(args.metrics_output) / f"{source_path.stem}_realtime_plot.png"
-                )
+                plot_path = save_dir / f"{source_path.stem}_realtime_plot.png"
                 metrics_plotter.save_current_plot(str(plot_path))
             metrics_plotter.close()
 
@@ -435,9 +433,7 @@ def main():
     if args.metrics and metrics_logger:
         print("\nGenerating distance graph...")
         plotter = MetricsPlotter()
-        graph_path = (
-            Path(args.metrics_output) / f"{source_path.stem}_distances_graph.png"
-        )
+        graph_path = save_dir / f"{source_path.stem}_distances_graph.png"
         plotter.generate_offline_graph(
             str(metrics_logger.distances_file), str(graph_path)
         )

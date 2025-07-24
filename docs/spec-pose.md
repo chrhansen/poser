@@ -57,7 +57,7 @@ All modules must be import-safe (no top-level heavy GPU work).
 | `--source` | str (file/dir/cam) | **required** | Input video or webcam index |
 | `--detect` | csv (objects,pose) | "objects,pose" | Which stages to activate |
 | `--tracker` | "botsort" \| "ocsort" | "botsort" | Tracker backend (pass-through) |
-| `--save_dir` | str | `out/` | Where to dump annotated videos |
+| `--save_dir` | str | `output/` | Where to save all output files |
 | `--show` | store_true | - | Live preview window |
 | `--config` | path | `configs/default.yaml` | Override hyper-params |
 

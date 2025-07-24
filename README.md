@@ -67,7 +67,7 @@ python3 track.py --source path/to/your/video.mp4
 |--------|---------|-------------|
 | `--source` | *required* | Path to input video file |
 | `--detect` | `objects,pose` | Detection stages to run (comma-separated) |
-| `--save_dir` | `out` | Output directory for processed videos |
+| `--save_dir` | `output` | Output directory for all files |
 | `--no-preview` | False | Disable live preview window (preview is shown by default) |
 | `--config` | `configs/default.yaml` | Configuration file path |
 | `--pose-detector` | `yolo` | Pose detection engine: `yolo` or `mediapipe` |
@@ -101,14 +101,22 @@ python3 track.py --source videos/ski_run.mp4 --no-preview
 
 ## Output Files
 
-The script generates separate output videos in the specified directory (default: `out/`):
+The script creates a subfolder in the output directory (default: `output/`) based on the input filename, and saves all outputs there:
 
 - **Object Tracking**: `<video_name>_with_box.mp4` - Shows bounding boxes with tracker IDs
 - **Pose Estimation**: `<video_name>_with_pose.mp4` - Shows skeletal keypoints on the main tracked skier
+- **Distance Metrics**: `<video_name>_distances.csv` - Frame-by-frame distance measurements (when `--metrics` is enabled)
+- **Landmarks**: `<video_name>_landmarks.csv` - Raw landmark positions (when `--metrics` is enabled)
+- **Distance Graph**: `<video_name>_distances_graph.png` - Visualization of distances over time (when `--metrics` is enabled)
 
 Example:
 - Input: `ski_race.mp4`
-- Outputs: `out/ski_race_with_box.mp4`, `out/ski_race_with_pose.mp4`
+- Output folder: `output/ski_race_mp4/`
+  - `ski_race_with_box.mp4`
+  - `ski_race_with_pose.mp4` 
+  - `ski_race_distances.csv`
+  - `ski_race_landmarks.csv`
+  - `ski_race_distances_graph.png`
 
 ## Distance Metrics Analysis
 
@@ -128,7 +136,6 @@ python3 track.py --source videos/ski_run.mp4 --metrics
 |--------|---------|-------------|
 | `--metrics` | False | Enable distance metrics calculation and logging |
 | `--realtime-plot` | False | Show real-time plot of distances during processing |
-| `--metrics-output` | `output` | Directory for metrics CSV files and graphs |
 
 ### Example Usage
 
@@ -139,7 +146,7 @@ python3 track.py --source videos/ski_run.mp4 --detect objects,pose --metrics --r
 
 **Save metrics to custom directory:**
 ```bash
-python3 track.py --source videos/ski_run.mp4 --metrics --metrics-output results/metrics
+python3 track.py --source videos/ski_run.mp4 --metrics --save_dir results
 ```
 
 ### Output Files
@@ -293,8 +300,7 @@ poser/
 ├── configs/               # Configuration files
 │   └── default.yaml       # Default settings
 ├── models/                # Model files (not tracked in git)
-├── out/                   # Default video output directory
-├── output/                # Default metrics output directory
+├── output/                # Default output directory for all files
 ├── docs/                  # Documentation and examples
 └── requirements.txt       # Python dependencies
 ```
