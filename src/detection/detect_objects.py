@@ -4,7 +4,6 @@ Object detection and tracking module using YOLOv11 and BoT-SORT.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import supervision as sv
@@ -12,7 +11,7 @@ import torch
 from boxmot import BotSort
 from ultralytics import YOLO
 
-Detection = Tuple[np.ndarray, int, float]  # (bbox_xyxy, track_id, conf)
+Detection = tuple[np.ndarray, int, float]  # (bbox_xyxy, track_id, conf)
 
 
 class ObjectDetector:
@@ -21,7 +20,7 @@ class ObjectDetector:
         self.model = None
         self.tracker = None
         self.device = None
-        self.track_lengths: Dict[int, int] = {}  # track_id -> frame_count
+        self.track_lengths: dict[int, int] = {}  # track_id -> frame_count
 
     def load_model(self, cfg: dict) -> YOLO:
         """Instantiate YOLO v11 with weights from config."""
@@ -65,7 +64,7 @@ class ObjectDetector:
 
         return self.tracker
 
-    def run(self, frame: np.ndarray) -> List[Detection]:
+    def run(self, frame: np.ndarray) -> list[Detection]:
         """
         Run detection and tracking on a frame.
         Returns list of (bbox_xyxy, track_id, conf) tuples.
@@ -115,7 +114,7 @@ class ObjectDetector:
 
         return detection_list
 
-    def get_longest_track_id(self) -> Optional[int]:
+    def get_longest_track_id(self) -> int | None:
         """Return the ID of the longest-lived track."""
         if not self.track_lengths:
             return None

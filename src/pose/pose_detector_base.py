@@ -4,7 +4,6 @@ Abstract base class for pose detectors.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 import numpy as np
 
@@ -27,7 +26,7 @@ class PoseDetectorBase(ABC):
         pass
 
     @abstractmethod
-    def detect(self, frame: np.ndarray, roi_bbox: np.ndarray) -> Optional[np.ndarray]:
+    def detect(self, frame: np.ndarray, roi_bbox: np.ndarray) -> np.ndarray | None:
         """
         Detect pose keypoints within the given ROI.
 

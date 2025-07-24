@@ -4,7 +4,7 @@ Smoothing utilities for pose keypoints.
 Implements One-Euro filter and Exponential Moving Average (EMA).
 """
 
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 
@@ -159,7 +159,7 @@ class MultiDimensionalFilter:
         return self.filters[axis].filter(x, dt, axis)
 
 
-def create_smoother(cfg: Dict[str, Any]):
+def create_smoother(cfg: dict[str, Any]):
     """
     Create a smoother based on configuration.
 

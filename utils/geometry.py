@@ -3,14 +3,13 @@
 Geometry utilities for bounding box operations.
 """
 
-from typing import Tuple
 
 import numpy as np
 
 
 def pad_bbox_to_square(
     x1: int, y1: int, x2: int, y2: int, img_w: int, img_h: int, pad_ratio: float = 0.5
-) -> Tuple[int, int, int, int]:
+) -> tuple[int, int, int, int]:
     """
     Pad a bounding box to make it square and add extra padding.
 
@@ -102,7 +101,7 @@ def expand_bbox(bbox: np.ndarray, expansion_ratio: float) -> np.ndarray:
     return np.array([cx - new_w / 2, cy - new_h / 2, cx + new_w / 2, cy + new_h / 2])
 
 
-def center_bbox(bbox: np.ndarray) -> Tuple[float, float]:
+def center_bbox(bbox: np.ndarray) -> tuple[float, float]:
     """
     Get the center point of a bounding box.
 

@@ -4,7 +4,6 @@ Metrics visualization module for plotting knee and ankle distances over time.
 """
 
 from pathlib import Path
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,7 +25,7 @@ class MetricsPlotter:
         self.update_interval = 5  # Update plot every 5 frames
         self.frame_count = 0
 
-    def generate_offline_graph(self, csv_path: str, output_path: Optional[str] = None):
+    def generate_offline_graph(self, csv_path: str, output_path: str | None = None):
         """
         Generate a static graph from a distances CSV file.
 
@@ -114,8 +113,8 @@ class MetricsPlotter:
     def update_realtime_plot(
         self,
         timestamp_ms: float,
-        knee_distance: Optional[float],
-        ankle_distance: Optional[float],
+        knee_distance: float | None,
+        ankle_distance: float | None,
     ):
         """
         Update the real-time plot with new data.

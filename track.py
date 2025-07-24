@@ -6,7 +6,6 @@ Orchestrates object detection/tracking and pose estimation stages.
 
 import argparse
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -78,12 +77,12 @@ def load_config(config_path: Path) -> dict:
 
 
 def select_main_track(
-    detections: List[Detection],
-    track_lengths: Dict[int, int],
-    last_main_id: Optional[int] = None,
+    detections: list[Detection],
+    track_lengths: dict[int, int],
+    last_main_id: int | None = None,
     gap_count: int = 0,
     gap_max: int = 10,
-) -> Tuple[Optional[int], int]:
+) -> tuple[int | None, int]:
     """
     Select the main track ID based on longest track history.
 
@@ -143,7 +142,7 @@ def main():
                 ["sysctl", "-n", "machdep.cpu.brand_string"], text=True
             ).strip()
             print(f"Processor: {chip_info}")
-        except:
+        except Exception:
             print(f"Processor: {platform.processor()}")
 
     # Check PyTorch device availability
@@ -320,7 +319,7 @@ def main():
                 if main_track_id is not None and detections:
                     # Find the main track's bbox
                     main_bbox = None
-                    for bbox, track_id, conf in detections:
+                    for bbox, track_id, _conf in detections:
                         if track_id == main_track_id:
                             main_bbox = bbox
                             break

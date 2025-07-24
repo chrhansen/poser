@@ -3,7 +3,6 @@
 Pose metrics calculator for computing distances between landmarks.
 """
 
-from typing import Dict, Optional, Tuple
 
 import numpy as np
 
@@ -42,7 +41,7 @@ class PoseMetricsCalculator:
         else:
             raise ValueError(f"Unknown detector type: {detector_type}")
 
-    def calculate_distances(self, keypoints: np.ndarray) -> Dict[str, Optional[float]]:
+    def calculate_distances(self, keypoints: np.ndarray) -> dict[str, float | None]:
         """
         Calculate knee and ankle distances from keypoints.
 
@@ -72,7 +71,7 @@ class PoseMetricsCalculator:
 
     def _get_landmark(
         self, keypoints: np.ndarray, landmark_name: str
-    ) -> Optional[np.ndarray]:
+    ) -> np.ndarray | None:
         """
         Extract a specific landmark from keypoints array.
 
@@ -100,8 +99,8 @@ class PoseMetricsCalculator:
             return None
 
     def _calculate_euclidean_distance(
-        self, point1: Optional[np.ndarray], point2: Optional[np.ndarray]
-    ) -> Optional[float]:
+        self, point1: np.ndarray | None, point2: np.ndarray | None
+    ) -> float | None:
         """
         Calculate Euclidean distance between two points.
 
@@ -128,7 +127,7 @@ class PoseMetricsCalculator:
 
     def get_all_landmark_positions(
         self, keypoints: np.ndarray
-    ) -> Dict[str, Tuple[float, float, float, float]]:
+    ) -> dict[str, tuple[float, float, float, float]]:
         """
         Get all landmark positions with their coordinates and visibility.
 

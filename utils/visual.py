@@ -3,7 +3,6 @@
 Visual utilities for drawing bounding boxes and skeletons.
 """
 
-from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -72,9 +71,9 @@ MP_SKELETON = [
 def draw_bbox(
     image: np.ndarray,
     bbox: np.ndarray,
-    color: Tuple[int, int, int] = (0, 255, 0),
+    color: tuple[int, int, int] = (0, 255, 0),
     thickness: int = 2,
-    label: Optional[str] = None,
+    label: str | None = None,
     font_scale: float = 0.5,
 ) -> np.ndarray:
     """
@@ -132,8 +131,8 @@ def draw_skeleton(
     keypoints: np.ndarray,
     model_type: str = "yolo",
     conf_threshold: float = 0.2,
-    point_color: Tuple[int, int, int] = (0, 0, 255),
-    line_color: Tuple[int, int, int] = (0, 255, 0),
+    point_color: tuple[int, int, int] = (0, 0, 255),
+    line_color: tuple[int, int, int] = (0, 255, 0),
     point_radius: int = 3,
     line_thickness: int = 1,
 ):
@@ -181,12 +180,12 @@ def draw_skeleton(
                 cv2.line(image, (x1, y1), (x2, y2), line_color, line_thickness)
 
     # Draw keypoints
-    for i, (x, y, conf) in enumerate(keypoints):
+    for _i, (x, y, conf) in enumerate(keypoints):
         if conf >= conf_threshold and not np.isnan(x) and not np.isnan(y):
             cv2.circle(image, (int(x), int(y)), point_radius, point_color, -1)
 
 
-def create_color_palette(n_colors: int) -> List[Tuple[int, int, int]]:
+def create_color_palette(n_colors: int) -> list[tuple[int, int, int]]:
     """
     Create a color palette for tracking visualization.
 
@@ -210,11 +209,11 @@ def create_color_palette(n_colors: int) -> List[Tuple[int, int, int]]:
 def overlay_text(
     image: np.ndarray,
     text: str,
-    position: Tuple[int, int],
+    position: tuple[int, int],
     font_scale: float = 0.7,
-    color: Tuple[int, int, int] = (255, 255, 255),
+    color: tuple[int, int, int] = (255, 255, 255),
     thickness: int = 2,
-    bg_color: Optional[Tuple[int, int, int]] = (0, 0, 0),
+    bg_color: tuple[int, int, int] | None = (0, 0, 0),
 ) -> np.ndarray:
     """
     Overlay text on an image with optional background.

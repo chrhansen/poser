@@ -5,7 +5,6 @@ Metrics storage module for saving pose landmark data and distances to CSV files.
 
 import csv
 from pathlib import Path
-from typing import Dict, Optional, Tuple
 
 
 class MetricsLogger:
@@ -61,8 +60,8 @@ class MetricsLogger:
         self,
         frame_number: int,
         timestamp_ms: float,
-        knee_distance: Optional[float],
-        ankle_distance: Optional[float],
+        knee_distance: float | None,
+        ankle_distance: float | None,
     ):
         """
         Log distance measurements for a frame.
@@ -88,8 +87,8 @@ class MetricsLogger:
         self,
         frame_number: int,
         timestamp_ms: float,
-        landmarks: Dict[str, Tuple[float, float, float, float]],
-        landmark_indices: Dict[str, int],
+        landmarks: dict[str, tuple[float, float, float, float]],
+        landmark_indices: dict[str, int],
     ):
         """
         Log all landmark positions for a frame.

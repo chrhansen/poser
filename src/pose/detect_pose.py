@@ -3,7 +3,6 @@
 Pose detection module with factory for different pose detection engines.
 """
 
-from typing import Optional
 
 import numpy as np
 
@@ -54,7 +53,7 @@ class PoseDetector:
     def run(
         self,
         frame: np.ndarray,
-        bbox: Optional[np.ndarray],
+        bbox: np.ndarray | None,
         dt: float = 1 / 30.0,
         return_keypoints: bool = False,
     ) -> np.ndarray:

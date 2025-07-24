@@ -3,7 +3,6 @@
 YOLO-Pose detector implementation.
 """
 
-from typing import Dict, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -28,7 +27,7 @@ class YOLOPoseDetector(PoseDetectorBase):
         print(f"Loading YOLO-Pose model: {self.model_path}")
         self.model = YOLO(self.model_path)
 
-    def detect(self, frame: np.ndarray, roi_bbox: np.ndarray) -> Optional[np.ndarray]:
+    def detect(self, frame: np.ndarray, roi_bbox: np.ndarray) -> np.ndarray | None:
         """
         Detect pose keypoints within the given ROI.
 
@@ -64,7 +63,7 @@ class YOLOPoseDetector(PoseDetectorBase):
 
     def _crop_and_pad_roi(
         self, frame: np.ndarray, bbox: np.ndarray
-    ) -> Tuple[np.ndarray, Dict]:
+    ) -> tuple[np.ndarray, dict]:
         """
         Crop and pad bbox to square ROI.
         Returns: (roi_image, transform_info)
@@ -90,7 +89,7 @@ class YOLOPoseDetector(PoseDetectorBase):
 
         return roi, transform_info
 
-    def _resize_for_model(self, roi: np.ndarray) -> Tuple[np.ndarray, Dict]:
+    def _resize_for_model(self, roi: np.ndarray) -> tuple[np.ndarray, dict]:
         """
         Resize ROI for YOLO model input.
         Returns: (resized_image, scale_info)
@@ -118,7 +117,7 @@ class YOLOPoseDetector(PoseDetectorBase):
 
         return resized, scale_info
 
-    def _detect_keypoints(self, image: np.ndarray) -> Optional[np.ndarray]:
+    def _detect_keypoints(self, image: np.ndarray) -> np.ndarray | None:
         """
         Run YOLO pose detection on the image.
         Returns: keypoints array of shape (N, 3) with (x, y, conf) or None
@@ -142,9 +141,9 @@ class YOLOPoseDetector(PoseDetectorBase):
     def _transform_keypoints_to_frame(
         self,
         keypoints: np.ndarray,
-        transform_info: Dict,
-        scale_info: Dict,
-        resized_shape: Tuple[int, int],
+        transform_info: dict,
+        scale_info: dict,
+        resized_shape: tuple[int, int],
     ) -> np.ndarray:
         """Transform keypoints from model space to original frame space."""
         # Copy keypoints to avoid modifying original

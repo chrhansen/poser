@@ -3,7 +3,6 @@
 MediaPipe Pose Landmarker detector implementation.
 """
 
-from typing import Dict, Optional, Tuple
 
 import cv2
 import mediapipe as mp
@@ -42,7 +41,7 @@ class MediaPipePoseDetector(PoseDetectorBase):
         )
         self.detector = vision.PoseLandmarker.create_from_options(options)
 
-    def detect(self, frame: np.ndarray, roi_bbox: np.ndarray) -> Optional[np.ndarray]:
+    def detect(self, frame: np.ndarray, roi_bbox: np.ndarray) -> np.ndarray | None:
         """
         Detect pose keypoints within the given ROI.
 
@@ -79,7 +78,7 @@ class MediaPipePoseDetector(PoseDetectorBase):
 
         return keypoints
 
-    def _crop_roi(self, frame: np.ndarray, bbox: np.ndarray) -> Tuple[np.ndarray, Dict]:
+    def _crop_roi(self, frame: np.ndarray, bbox: np.ndarray) -> tuple[np.ndarray, dict]:
         """
         Crop the ROI from frame based on bounding box.
         Returns: (roi_image, transform_info)
@@ -105,7 +104,7 @@ class MediaPipePoseDetector(PoseDetectorBase):
 
         return roi, transform_info
 
-    def _make_square(self, roi: np.ndarray) -> Tuple[np.ndarray, Dict]:
+    def _make_square(self, roi: np.ndarray) -> tuple[np.ndarray, dict]:
         """
         Convert ROI to square by adding padding.
         Returns: (square_image, padding_info)
@@ -148,7 +147,7 @@ class MediaPipePoseDetector(PoseDetectorBase):
 
         return padded, padding_info
 
-    def _detect_keypoints(self, image: np.ndarray) -> Optional[np.ndarray]:
+    def _detect_keypoints(self, image: np.ndarray) -> np.ndarray | None:
         """
         Run MediaPipe pose detection on the image.
         Returns: keypoints array of shape (33, 3) with (x, y, conf) or None
@@ -186,9 +185,9 @@ class MediaPipePoseDetector(PoseDetectorBase):
     def _transform_keypoints_to_frame(
         self,
         keypoints: np.ndarray,
-        transform_info: Dict,
-        padding_info: Dict,
-        square_shape: Tuple[int, int],
+        transform_info: dict,
+        padding_info: dict,
+        square_shape: tuple[int, int],
     ) -> np.ndarray:
         """Transform keypoints from model space to original frame space."""
         # Copy keypoints to avoid modifying original
