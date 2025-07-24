@@ -304,3 +304,60 @@ poser/
 - CUDA-capable GPU (optional, for NVIDIA acceleration)
 - Apple Silicon Mac (optional, for MPS acceleration)
 - ~2GB disk space for models and dependencies
+
+## Development
+
+### Setting Up Development Environment
+
+1. **Install development dependencies:**
+```bash
+pip install -r requirements-dev.txt
+```
+
+2. **Run linting:**
+```bash
+# Auto-fix issues
+ruff check . --fix
+black .
+
+# Check without fixing
+ruff check .
+black --check .
+```
+
+3. **Run tests:**
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+
+# Run specific test file
+pytest tests/unit/test_metrics_calculator.py -v
+```
+
+4. **Type checking:**
+```bash
+mypy src/
+```
+
+### Code Quality
+
+This project uses:
+- **ruff**: Fast Python linter for code quality
+- **black**: Code formatter for consistent style
+- **mypy**: Static type checker
+- **pytest**: Testing framework with coverage
+
+All pull requests are automatically checked by GitHub Actions CI.
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests and linting
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request

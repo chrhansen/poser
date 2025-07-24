@@ -6,55 +6,67 @@ Metrics storage module for saving pose landmark data and distances to CSV files.
 import csv
 from pathlib import Path
 from typing import Dict, Optional, Tuple
-import os
 
 
 class MetricsLogger:
     """Handle writing of landmark and distance data to CSV files."""
-    
-    def __init__(self, video_filename: str, output_dir: str = 'output'):
+
+    def __init__(self, video_filename: str, output_dir: str = "output"):
         """
         Initialize the metrics logger.
-        
+
         Args:
             video_filename: Name of the input video file
             output_dir: Directory to save output files
         """
         self.video_name = Path(video_filename).stem
         self.output_dir = Path(output_dir)
-        
+
         # Create output directory if it doesn't exist
         self.output_dir.mkdir(exist_ok=True)
-        
+
         # Setup file paths
         self.distances_file = self.output_dir / f"{self.video_name}_distances.csv"
         self.landmarks_file = self.output_dir / f"{self.video_name}_landmarks.csv"
-        
+
         # Open files and create writers
         self._init_files()
-    
+
     def _init_files(self):
         """Initialize CSV files with headers."""
         # Distances file
-        self.distances_fp = open(self.distances_file, 'w', newline='')
+        self.distances_fp = open(self.distances_file, "w", newline="")
         self.distances_writer = csv.writer(self.distances_fp)
-        self.distances_writer.writerow([
-            'frame_number', 'timestamp_ms', 'knee_distance', 'ankle_distance'
-        ])
-        
+        self.distances_writer.writerow(
+            ["frame_number", "timestamp_ms", "knee_distance", "ankle_distance"]
+        )
+
         # Landmarks file
-        self.landmarks_fp = open(self.landmarks_file, 'w', newline='')
+        self.landmarks_fp = open(self.landmarks_file, "w", newline="")
         self.landmarks_writer = csv.writer(self.landmarks_fp)
-        self.landmarks_writer.writerow([
-            'frame_number', 'timestamp_ms', 'landmark_index', 'landmark_name', 
-            'x', 'y', 'z', 'visibility'
-        ])
-    
-    def log_distances(self, frame_number: int, timestamp_ms: float, 
-                     knee_distance: Optional[float], ankle_distance: Optional[float]):
+        self.landmarks_writer.writerow(
+            [
+                "frame_number",
+                "timestamp_ms",
+                "landmark_index",
+                "landmark_name",
+                "x",
+                "y",
+                "z",
+                "visibility",
+            ]
+        )
+
+    def log_distances(
+        self,
+        frame_number: int,
+        timestamp_ms: float,
+        knee_distance: Optional[float],
+        ankle_distance: Optional[float],
+    ):
         """
         Log distance measurements for a frame.
-        
+
         Args:
             frame_number: Current frame number
             timestamp_ms: Timestamp in milliseconds
@@ -62,22 +74,26 @@ class MetricsLogger:
             ankle_distance: Distance between ankles (None if not detected)
         """
         # Convert None to empty string for CSV
-        knee_dist_str = '' if knee_distance is None else f"{knee_distance:.6f}"
-        ankle_dist_str = '' if ankle_distance is None else f"{ankle_distance:.6f}"
-        
-        self.distances_writer.writerow([
-            frame_number, f"{timestamp_ms:.2f}", knee_dist_str, ankle_dist_str
-        ])
-        
+        knee_dist_str = "" if knee_distance is None else f"{knee_distance:.6f}"
+        ankle_dist_str = "" if ankle_distance is None else f"{ankle_distance:.6f}"
+
+        self.distances_writer.writerow(
+            [frame_number, f"{timestamp_ms:.2f}", knee_dist_str, ankle_dist_str]
+        )
+
         # Flush to ensure data is written
         self.distances_fp.flush()
-    
-    def log_all_landmarks(self, frame_number: int, timestamp_ms: float,
-                         landmarks: Dict[str, Tuple[float, float, float, float]],
-                         landmark_indices: Dict[str, int]):
+
+    def log_all_landmarks(
+        self,
+        frame_number: int,
+        timestamp_ms: float,
+        landmarks: Dict[str, Tuple[float, float, float, float]],
+        landmark_indices: Dict[str, int],
+    ):
         """
         Log all landmark positions for a frame.
-        
+
         Args:
             frame_number: Current frame number
             timestamp_ms: Timestamp in milliseconds
@@ -86,26 +102,28 @@ class MetricsLogger:
         """
         for name, (x, y, z, visibility) in landmarks.items():
             idx = landmark_indices.get(name, -1)
-            
-            self.landmarks_writer.writerow([
-                frame_number,
-                f"{timestamp_ms:.2f}",
-                idx,
-                name,
-                f"{x:.6f}",
-                f"{y:.6f}",
-                f"{z:.6f}",
-                f"{visibility:.6f}"
-            ])
-        
+
+            self.landmarks_writer.writerow(
+                [
+                    frame_number,
+                    f"{timestamp_ms:.2f}",
+                    idx,
+                    name,
+                    f"{x:.6f}",
+                    f"{y:.6f}",
+                    f"{z:.6f}",
+                    f"{visibility:.6f}",
+                ]
+            )
+
         # Flush to ensure data is written
         self.landmarks_fp.flush()
-    
+
     def close(self):
         """Close all open files."""
         self.distances_fp.close()
         self.landmarks_fp.close()
-        
-        print(f"Metrics saved to:")
+
+        print("Metrics saved to:")
         print(f"  - Distances: {self.distances_file}")
         print(f"  - Landmarks: {self.landmarks_file}")

@@ -1,0 +1,17 @@
+# Development dependencies
+-r requirements.txt
+
+# Linting and formatting
+ruff>=0.1.0
+black>=23.0.0
+mypy>=1.5.0
+types-PyYAML>=6.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+
+# Type stubs for dependencies
+types-requests
+pandas-stubs
