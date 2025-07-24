@@ -8,7 +8,7 @@ import numpy as np
 import cv2
 from ultralytics import YOLO
 
-from pose_detector_base import PoseDetectorBase
+from .pose_detector_base import PoseDetectorBase
 from utils.geometry import pad_bbox_to_square
 
 

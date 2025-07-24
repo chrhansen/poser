@@ -10,7 +10,7 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
-from pose_detector_base import PoseDetectorBase
+from .pose_detector_base import PoseDetectorBase
 from utils.geometry import pad_bbox_to_square
 
 

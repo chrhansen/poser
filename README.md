@@ -269,30 +269,32 @@ pip install opencv-contrib-python
 
 ```
 poser/
-├── track.py                # Main entry point
-├── detect_objects.py       # Object detection and tracking module
-├── detect_pose.py          # Pose estimation factory module
-├── pose_detector_base.py   # Abstract base class for pose detectors
-├── yolo_pose_detector.py   # YOLO-Pose implementation
-├── mediapipe_pose_detector.py  # MediaPipe Pose implementation
-├── download_models.py      # Script to download MediaPipe models
+├── track.py                # Main entry point for video processing
 ├── generate_graph.py       # Standalone graph generation script
-├── metrics/               # Distance metrics calculation
-│   ├── calculator.py      # PoseMetricsCalculator class
-│   └── storage.py         # MetricsLogger for CSV output
-├── visualization/         # Data visualization
-│   └── plotter.py        # MetricsPlotter for graphs
-├── utils/                  # Utility modules
+├── download_models.py      # Script to download MediaPipe models
+├── src/                   # Source code modules
+│   ├── detection/         # Object detection and tracking
+│   │   └── detect_objects.py
+│   ├── pose/              # Pose estimation modules
+│   │   ├── detect_pose.py          # Pose detector factory
+│   │   ├── pose_detector_base.py   # Abstract base class
+│   │   ├── yolo_pose_detector.py   # YOLO implementation
+│   │   └── mediapipe_pose_detector.py  # MediaPipe implementation
+│   ├── metrics/           # Distance metrics calculation
+│   │   ├── calculator.py  # PoseMetricsCalculator class
+│   │   └── storage.py     # MetricsLogger for CSV output
+│   └── visualization/     # Data visualization
+│       └── plotter.py     # MetricsPlotter for graphs
+├── utils/                 # Utility modules
 │   ├── smoothing.py       # Keypoint smoothing filters
 │   ├── geometry.py        # Bounding box operations
 │   └── visual.py          # Drawing utilities
 ├── configs/               # Configuration files
 │   └── default.yaml       # Default settings
 ├── models/                # Model files (not tracked in git)
-│   └── .gitkeep          # Keeps folder in git
-├── out/                   # Default output directory
-│   └── .gitkeep          # Keeps folder in git
+├── out/                   # Default video output directory
 ├── output/                # Default metrics output directory
+├── docs/                  # Documentation and examples
 └── requirements.txt       # Python dependencies
 ```
 

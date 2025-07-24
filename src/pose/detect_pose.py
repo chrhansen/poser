@@ -7,9 +7,9 @@ from typing import Optional
 import numpy as np
 from utils.visual import draw_skeleton
 
-from pose_detector_base import PoseDetectorBase
-from yolo_pose_detector import YOLOPoseDetector
-from mediapipe_pose_detector import MediaPipePoseDetector
+from .pose_detector_base import PoseDetectorBase
+from .yolo_pose_detector import YOLOPoseDetector
+from .mediapipe_pose_detector import MediaPipePoseDetector
 
 
 def create_pose_detector(detector_type: str, cfg: dict) -> PoseDetectorBase:

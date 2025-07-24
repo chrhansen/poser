@@ -5,7 +5,7 @@ Standalone script to generate graphs from distance CSV files.
 
 import argparse
 from pathlib import Path
-from visualization.plotter import MetricsPlotter
+from src.visualization.plotter import MetricsPlotter
 
 
 def parse_args():

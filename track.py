@@ -12,12 +12,12 @@ import cv2
 import supervision as sv
 from typing import List, Optional, Dict, Tuple
 
-from detect_objects import ObjectDetector, Detection
-from detect_pose import PoseDetector
+from src.detection.detect_objects import ObjectDetector, Detection
+from src.pose.detect_pose import PoseDetector
 from utils.visual import draw_bbox
-from metrics.calculator import PoseMetricsCalculator
-from metrics.storage import MetricsLogger
-from visualization.plotter import MetricsPlotter
+from src.metrics.calculator import PoseMetricsCalculator
+from src.metrics.storage import MetricsLogger
+from src.visualization.plotter import MetricsPlotter
 
 
 def parse_args():
