@@ -35,8 +35,9 @@ class PoseDetectorBase(ABC):
             roi_bbox: Bounding box [x1, y1, x2, y2] of the person
 
         Returns:
-            Keypoints array of shape (N, 3) with (x, y, conf) in frame coordinates,
+            Keypoints array of shape (N, 4) with (x, y, z, conf) in frame coordinates,
             or None if no pose detected
+            Note: z may be 0 for 2D-only detectors like YOLO
         """
         pass
 

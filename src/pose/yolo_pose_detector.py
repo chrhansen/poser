@@ -120,7 +120,8 @@ class YOLOPoseDetector(PoseDetectorBase):
     def _detect_keypoints(self, image: np.ndarray) -> np.ndarray | None:
         """
         Run YOLO pose detection on the image.
-        Returns: keypoints array of shape (N, 3) with (x, y, conf) or None
+        Returns: keypoints array of shape (N, 4) with (x, y, z, conf) or None
+                 Note: z is always 0 for YOLO as it only provides 2D coordinates
         """
         # Run inference with specific parameters
         results = self.model(image, imgsz=self.target_size, conf=0.2, verbose=False)
@@ -132,10 +133,13 @@ class YOLOPoseDetector(PoseDetectorBase):
                 if kpts_data.shape[0] > 0:  # At least one person detected
                     # Get first person's keypoints
                     kpts = kpts_data[0].cpu().numpy()  # Shape: (17, 3)
-                    # Filter out keypoints with 0 confidence
-                    valid_kpts = kpts[kpts[:, 2] > 0]
-                    if len(valid_kpts) > 0:
-                        return kpts
+                    # Add z=0 to make it (17, 4) for consistency with MediaPipe
+                    kpts_with_z = np.zeros((kpts.shape[0], 4))
+                    kpts_with_z[:, 0] = kpts[:, 0]  # x
+                    kpts_with_z[:, 1] = kpts[:, 1]  # y
+                    kpts_with_z[:, 2] = 0.0          # z (always 0 for YOLO)
+                    kpts_with_z[:, 3] = kpts[:, 2]  # confidence
+                    return kpts_with_z
         return None
 
     def _transform_keypoints_to_frame(

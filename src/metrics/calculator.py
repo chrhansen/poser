@@ -12,6 +12,10 @@ class PoseMetricsCalculator:
 
     # MediaPipe landmark indices
     MEDIAPIPE_LANDMARKS = {
+        "LEFT_SHOULDER": 11,
+        "RIGHT_SHOULDER": 12,
+        "LEFT_HIP": 23,
+        "RIGHT_HIP": 24,
         "LEFT_KNEE": 25,
         "RIGHT_KNEE": 26,
         "LEFT_ANKLE": 27,
@@ -20,6 +24,10 @@ class PoseMetricsCalculator:
 
     # YOLO/COCO landmark indices
     YOLO_LANDMARKS = {
+        "LEFT_SHOULDER": 5,
+        "RIGHT_SHOULDER": 6,
+        "LEFT_HIP": 11,
+        "RIGHT_HIP": 12,
         "LEFT_KNEE": 13,
         "RIGHT_KNEE": 14,
         "LEFT_ANKLE": 15,
@@ -168,10 +176,13 @@ class PoseMetricsCalculator:
 
             point = keypoints[idx]
 
-            if len(point) >= 3:
-                x, y = point[0], point[1]
-                z = point[2] if len(point) == 4 else 0.0
-                visibility = point[-1]  # Last element is always confidence/visibility
+            if len(point) == 4:
+                # Format: (x, y, z, visibility/confidence)
+                x, y, z, visibility = point[0], point[1], point[2], point[3]
+            elif len(point) == 3:
+                # Format: (x, y, visibility/confidence) - no z coordinate
+                x, y, visibility = point[0], point[1], point[2]
+                z = 0.0
             else:
                 x, y, z, visibility = 0.0, 0.0, 0.0, 0.0
 

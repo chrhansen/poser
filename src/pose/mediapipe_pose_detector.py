@@ -55,7 +55,7 @@ class MediaPipePoseDetector(PoseDetectorBase):
             roi_bbox: Bounding box [x1, y1, x2, y2] of the person
 
         Returns:
-            Keypoints array of shape (33, 3) with (x, y, conf) in frame coordinates,
+            Keypoints array of shape (33, 4) with (x, y, z, conf) in frame coordinates,
             or None if no pose detected
         """
         if self.detector is None:
@@ -179,9 +179,11 @@ class MediaPipePoseDetector(PoseDetectorBase):
                 # Convert normalized coordinates to pixel coordinates
                 x = landmark.x * self.target_size
                 y = landmark.y * self.target_size
+                # MediaPipe provides z in the same scale as x,y (image scale)
+                z = landmark.z * self.target_size if hasattr(landmark, "z") else 0.0
                 # Use visibility as confidence
                 conf = landmark.visibility if hasattr(landmark, "visibility") else 1.0
-                keypoints.append([x, y, conf])
+                keypoints.append([x, y, z, conf])
 
             return np.array(keypoints)
 
@@ -213,6 +215,51 @@ class MediaPipePoseDetector(PoseDetectorBase):
         kpts[:, 1] += transform_info["crop_y1"]
 
         return kpts
+
+    def get_world_landmarks(self, frame: np.ndarray, roi_bbox: np.ndarray) -> np.ndarray | None:
+        """
+        Get world landmarks from MediaPipe (in meters, centered at hips).
+        
+        Args:
+            frame: Original video frame
+            roi_bbox: Bounding box [x1, y1, x2, y2] of the person
+            
+        Returns:
+            World landmarks array of shape (33, 4) with (x, y, z, visibility) in meters,
+            or None if not available
+        """
+        if self.detector is None:
+            raise RuntimeError("MediaPipe Pose Landmarker not initialized")
+            
+        # Crop and prepare image same as detect()
+        roi, transform_info = self._crop_roi(frame, roi_bbox)
+        square_roi, padding_info = self._make_square(roi)
+        resized = cv2.resize(square_roi, (self.target_size, self.target_size))
+        
+        # Convert BGR to RGB
+        image_rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
+        
+        # Run detection - use current timestamp to avoid conflicts
+        # Each call needs a unique timestamp for MediaPipe's video mode
+        timestamp_ms = self.last_timestamp_ms + 1
+        detection_result = self.detector.detect_for_video(mp_image, timestamp_ms)
+        
+        if detection_result.pose_world_landmarks and len(detection_result.pose_world_landmarks) > 0:
+            world_landmarks = detection_result.pose_world_landmarks[0]
+            world_keypoints = []
+            
+            for landmark in world_landmarks:
+                # World coordinates are in meters
+                x = landmark.x
+                y = landmark.y
+                z = landmark.z
+                visibility = landmark.visibility if hasattr(landmark, "visibility") else 1.0
+                world_keypoints.append([x, y, z, visibility])
+                
+            return np.array(world_keypoints)
+            
+        return None
 
     def _download_model(self):
         """Download the MediaPipe pose model if it doesn't exist."""

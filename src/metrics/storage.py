@@ -27,6 +27,7 @@ class MetricsLogger:
         # Setup file paths
         self.distances_file = self.output_dir / f"{self.video_name}_distances.csv"
         self.landmarks_file = self.output_dir / f"{self.video_name}_landmarks.csv"
+        self.world_landmarks_file = self.output_dir / f"{self.video_name}_world_landmarks.csv"
 
         # Open files and create writers
         self._init_files()
@@ -62,6 +63,11 @@ class MetricsLogger:
                 "visibility",
             ]
         )
+        
+        # World landmarks file (only created if world landmarks are available)
+        self.world_landmarks_fp = None
+        self.world_landmarks_writer = None
+        self.has_world_landmarks = False
 
     def log_distances(
         self,
@@ -138,11 +144,74 @@ class MetricsLogger:
         # Flush to ensure data is written
         self.landmarks_fp.flush()
 
+    def log_world_landmarks(
+        self,
+        frame_number: int,
+        timestamp_ms: float,
+        landmarks: dict[str, tuple[float, float, float, float]],
+        landmark_indices: dict[str, int],
+    ):
+        """
+        Log world landmark positions for all tracked landmarks.
+        
+        Args:
+            frame_number: Current frame number
+            timestamp_ms: Timestamp in milliseconds
+            landmarks: Dictionary mapping landmark names to (x, y, z, visibility) tuples
+                      where x, y, z are in meters (world coordinates)
+            landmark_indices: Dictionary mapping landmark names to their indices
+        """
+        # Initialize world landmarks file on first call
+        if not self.has_world_landmarks and not self.world_landmarks_fp:
+            self.world_landmarks_fp = open(self.world_landmarks_file, "w", newline="")
+            self.world_landmarks_writer = csv.writer(self.world_landmarks_fp)
+            self.world_landmarks_writer.writerow(
+                [
+                    "frame_number",
+                    "timestamp_ms",
+                    "landmark_index",
+                    "landmark_name",
+                    "x_meters",
+                    "y_meters",
+                    "z_meters",
+                    "visibility",
+                ]
+            )
+            self.has_world_landmarks = True
+            
+        if self.world_landmarks_writer is None:
+            return
+            
+        # Write each landmark's world coordinates
+        for name, (x, y, z, visibility) in landmarks.items():
+            idx = landmark_indices.get(name, -1)
+            self.world_landmarks_writer.writerow(
+                [
+                    frame_number,
+                    f"{timestamp_ms:.2f}",
+                    idx,
+                    name,
+                    f"{x:.6f}",
+                    f"{y:.6f}",
+                    f"{z:.6f}",
+                    f"{visibility:.6f}",
+                ]
+            )
+            
+        # Flush to ensure data is written
+        self.world_landmarks_fp.flush()
+
     def close(self):
         """Close all open files."""
         self.distances_fp.close()
         self.landmarks_fp.close()
+        
+        if self.world_landmarks_fp:
+            self.world_landmarks_fp.close()
 
         print("Metrics saved to:")
         print(f"  - Distances: {self.distances_file}")
         print(f"  - Landmarks: {self.landmarks_file}")
+        
+        if self.has_world_landmarks:
+            print(f"  - World landmarks: {self.world_landmarks_file}")

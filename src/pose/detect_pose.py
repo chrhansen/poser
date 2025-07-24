@@ -92,3 +92,24 @@ class PoseDetector:
         if return_keypoints:
             return frame, keypoints
         return frame
+
+    def get_world_landmarks(self, frame: np.ndarray, bbox: np.ndarray | None) -> np.ndarray | None:
+        """
+        Get world landmarks if available (currently only for MediaPipe).
+        
+        Args:
+            frame: Original video frame
+            bbox: Bounding box [x1, y1, x2, y2] of the person
+            
+        Returns:
+            World landmarks array of shape (N, 4) with (x, y, z, visibility) in meters,
+            or None if not available
+        """
+        if self.detector is None or bbox is None:
+            return None
+            
+        # Only MediaPipe supports world landmarks
+        if self.detector_type == "mediapipe" and hasattr(self.detector, 'get_world_landmarks'):
+            return self.detector.get_world_landmarks(frame, bbox)
+            
+        return None

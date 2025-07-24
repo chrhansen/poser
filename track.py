@@ -369,6 +369,15 @@ def main():
                     metrics_logger.log_all_landmarks(
                         frame_idx, timestamp_ms, landmarks, metrics_calculator.landmarks
                     )
+                    
+                    # Log world landmarks if available (MediaPipe only)
+                    if args.pose_detector == "mediapipe" and main_bbox is not None:
+                        world_keypoints = pose_detector.get_world_landmarks(frame, main_bbox)
+                        if world_keypoints is not None:
+                            world_landmarks = metrics_calculator.get_all_landmark_positions(world_keypoints)
+                            metrics_logger.log_world_landmarks(
+                                frame_idx, timestamp_ms, world_landmarks, metrics_calculator.landmarks
+                            )
 
                     # Update real-time plot if enabled
                     if metrics_plotter:

@@ -122,3 +122,91 @@ class TestMetricsLogger:
         assert "Landmarks:" in captured.out
         assert str(logger.distances_file) in captured.out
         assert str(logger.landmarks_file) in captured.out
+
+    def test_log_world_landmarks(self, temp_output_dir):
+        """Test logging world landmark coordinates."""
+        logger = MetricsLogger("test_video.mp4", str(temp_output_dir))
+        
+        # Test world landmarks (in meters)
+        world_landmarks = {
+            "LEFT_SHOULDER": (-0.2, 0.8, -0.1, 0.95),
+            "RIGHT_SHOULDER": (0.2, 0.8, -0.1, 0.95),
+            "LEFT_HIP": (-0.15, 0.4, 0.0, 0.98),
+            "RIGHT_HIP": (0.15, 0.4, 0.0, 0.98),
+            "LEFT_KNEE": (-0.15, 0.0, 0.05, 0.90),
+            "RIGHT_KNEE": (0.15, 0.0, 0.05, 0.90),
+            "LEFT_ANKLE": (-0.15, -0.4, 0.1, 0.85),
+            "RIGHT_ANKLE": (0.15, -0.4, 0.1, 0.85),
+        }
+        
+        landmark_indices = {
+            "LEFT_SHOULDER": 11,
+            "RIGHT_SHOULDER": 12,
+            "LEFT_HIP": 23,
+            "RIGHT_HIP": 24,
+            "LEFT_KNEE": 25,
+            "RIGHT_KNEE": 26,
+            "LEFT_ANKLE": 27,
+            "RIGHT_ANKLE": 28,
+        }
+        
+        logger.log_world_landmarks(0, 0.0, world_landmarks, landmark_indices)
+        logger.log_world_landmarks(1, 33.3, world_landmarks, landmark_indices)
+        logger.close()
+        
+        # Verify world landmarks file was created
+        assert logger.world_landmarks_file.exists()
+        
+        # Read and verify the CSV
+        with open(logger.world_landmarks_file) as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+        
+        assert len(rows) == 17  # Header + 8 landmarks * 2 frames
+        assert rows[0] == [
+            "frame_number",
+            "timestamp_ms",
+            "landmark_index",
+            "landmark_name",
+            "x_meters",
+            "y_meters",
+            "z_meters",
+            "visibility",
+        ]
+        
+        # Check a specific landmark
+        left_knee_row = next(r for r in rows if r[3] == "LEFT_KNEE" and r[0] == "0")
+        assert left_knee_row[2] == "25"  # landmark index
+        assert left_knee_row[4] == "-0.150000"  # x in meters
+        assert left_knee_row[5] == "0.000000"  # y in meters
+        assert left_knee_row[6] == "0.050000"  # z in meters
+        assert left_knee_row[7] == "0.900000"  # visibility
+        
+    def test_log_world_landmarks_none_values(self, temp_output_dir):
+        """Test that log_world_landmarks handles None values gracefully."""
+        logger = MetricsLogger("test_video.mp4", str(temp_output_dir))
+        
+        # Test with empty landmarks dict (since the method expects a dict)
+        logger.log_world_landmarks(0, 0.0, {}, {})
+        logger.close()
+        
+        # World landmarks file should be created with just header
+        assert logger.world_landmarks_file.exists()
+        
+        with open(logger.world_landmarks_file) as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+        
+        assert len(rows) == 1  # Only header
+        
+    def test_close_with_world_landmarks(self, temp_output_dir, capsys):
+        """Test that close() prints world landmarks file path when it exists."""
+        logger = MetricsLogger("test.mp4", str(temp_output_dir))
+        
+        # Log some world landmarks to create the file
+        logger.log_world_landmarks(0, 0.0, {"LEFT_KNEE": (0, 0, 0, 1)}, {"LEFT_KNEE": 25})
+        logger.close()
+        
+        captured = capsys.readouterr()
+        assert "World landmarks:" in captured.out
+        assert str(logger.world_landmarks_file) in captured.out

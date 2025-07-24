@@ -141,7 +141,7 @@ def draw_skeleton(
 
     Args:
         image: Input image
-        keypoints: Array of keypoints with shape (N, 3) where each row is (x, y, conf)
+        keypoints: Array of keypoints with shape (N, 3) or (N, 4) where each row is (x, y, conf) or (x, y, z, conf)
         model_type: 'yolo' or 'mediapipe' to determine skeleton connections
         conf_threshold: Minimum confidence to draw a keypoint
         point_color: BGR color for keypoints
@@ -165,9 +165,13 @@ def draw_skeleton(
 
         # Check if both keypoints exist and have sufficient confidence
         if kpt_a < len(keypoints) and kpt_b < len(keypoints):
+            # Get confidence value (last element)
+            conf_a = keypoints[kpt_a, -1]
+            conf_b = keypoints[kpt_b, -1]
+            
             if (
-                keypoints[kpt_a, 2] >= conf_threshold
-                and keypoints[kpt_b, 2] >= conf_threshold
+                conf_a >= conf_threshold
+                and conf_b >= conf_threshold
                 and not np.isnan(keypoints[kpt_a, 0])
                 and not np.isnan(keypoints[kpt_a, 1])
                 and not np.isnan(keypoints[kpt_b, 0])
@@ -180,7 +184,9 @@ def draw_skeleton(
                 cv2.line(image, (x1, y1), (x2, y2), line_color, line_thickness)
 
     # Draw keypoints
-    for _i, (x, y, conf) in enumerate(keypoints):
+    for _i, kpt in enumerate(keypoints):
+        x, y = kpt[0], kpt[1]
+        conf = kpt[-1]  # Last element is confidence
         if conf >= conf_threshold and not np.isnan(x) and not np.isnan(y):
             cv2.circle(image, (int(x), int(y)), point_radius, point_color, -1)
 
