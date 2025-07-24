@@ -37,7 +37,9 @@ def parse_args():
     parser.add_argument(
         "--save_dir", type=str, default="out", help="Output directory for videos"
     )
-    parser.add_argument("--show", action="store_true", help="Show live preview window")
+    parser.add_argument(
+        "--no-preview", action="store_true", help="Disable live preview window"
+    )
     parser.add_argument(
         "--config",
         type=Path,
@@ -240,6 +242,8 @@ def main():
     if detect_pose:
         print(f"Pose detector: {args.pose_detector}")
     print(f"Output directory: {save_dir}")
+    if not args.no_preview:
+        print("\nPress 'q' in the preview window to stop processing early.")
 
     # Process video
     cap = cv2.VideoCapture(str(source_path))
@@ -382,12 +386,13 @@ def main():
             if "pose" in writers and pose_frame is not None:
                 writers["pose"].write(pose_frame)
 
-            # Show preview if requested
-            if args.show:
+            # Show preview unless disabled
+            if not args.no_preview:
                 preview = pose_frame if detect_pose else bbox_frame
                 if preview is not None:
-                    cv2.imshow("Track and Pose", preview)
+                    cv2.imshow("Live Processing Preview", preview)
                     if cv2.waitKey(1) & 0xFF == ord("q"):
+                        print("\nProcessing terminated by user.")
                         break
 
             # Progress
@@ -402,7 +407,7 @@ def main():
         cap.release()
         for writer in writers.values():
             writer.release()
-        if args.show:
+        if not args.no_preview:
             cv2.destroyAllWindows()
 
         # Cleanup metrics components

@@ -20,6 +20,7 @@ This project provides a modular Python pipeline for detecting, tracking, and ana
 ## Features
 
 - **Modular Design**: Run object detection only, pose estimation only, or both
+- **Live Preview**: Real-time visualization of processing results (press 'q' to stop early)
 - **Dual Pose Engines**: Choose between YOLOv11 Pose or MediaPipe Pose Landmarker
 - **YOLOv11 Models**: Uses YOLOv11 Medium for object detection and YOLOv11 X-Large Pose for keypoint detection
 - **Advanced Tracking**: BoT-SORT algorithm with ReID for robust sports tracking
@@ -67,7 +68,7 @@ python3 track.py --source path/to/your/video.mp4
 | `--source` | *required* | Path to input video file |
 | `--detect` | `objects,pose` | Detection stages to run (comma-separated) |
 | `--save_dir` | `out` | Output directory for processed videos |
-| `--show` | False | Display live preview window |
+| `--no-preview` | False | Disable live preview window (preview is shown by default) |
 | `--config` | `configs/default.yaml` | Configuration file path |
 | `--pose-detector` | `yolo` | Pose detection engine: `yolo` or `mediapipe` |
 
@@ -93,9 +94,9 @@ python3 track.py --source videos/ski_run.mp4 --pose-detector mediapipe
 python3 track.py --source videos/ski_run.mp4 --save_dir results/
 ```
 
-**Show live preview:**
+**Process without live preview:**
 ```bash
-python3 track.py --source videos/ski_run.mp4 --show
+python3 track.py --source videos/ski_run.mp4 --no-preview
 ```
 
 ## Output Files
