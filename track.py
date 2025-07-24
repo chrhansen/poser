@@ -15,6 +15,9 @@ from typing import List, Optional, Dict, Tuple
 from detect_objects import ObjectDetector, Detection
 from detect_pose import PoseDetector
 from utils.visual import draw_bbox
+from metrics.calculator import PoseMetricsCalculator
+from metrics.storage import MetricsLogger
+from visualization.plotter import MetricsPlotter
 
 
 def parse_args():
@@ -57,6 +60,22 @@ def parse_args():
         default="yolo",
         choices=["yolo", "mediapipe"],
         help="Pose detection engine to use (default: yolo)"
+    )
+    parser.add_argument(
+        "--metrics",
+        action="store_true",
+        help="Enable distance metrics calculation and logging"
+    )
+    parser.add_argument(
+        "--realtime-plot",
+        action="store_true",
+        help="Show real-time plot of distances (requires --metrics)"
+    )
+    parser.add_argument(
+        "--metrics-output",
+        type=str,
+        default="output",
+        help="Output directory for metrics CSV files (default: output)"
     )
     return parser.parse_args()
 
@@ -194,6 +213,19 @@ def main():
         pose_detector = PoseDetector(cfg)
         pose_detector.load_model(cfg, detector_type=args.pose_detector)
     
+    # Initialize metrics components if enabled
+    metrics_calculator = None
+    metrics_logger = None
+    metrics_plotter = None
+    
+    if args.metrics and detect_pose:
+        metrics_calculator = PoseMetricsCalculator(detector_type=args.pose_detector)
+        metrics_logger = MetricsLogger(str(source_path), output_dir=args.metrics_output)
+        
+        if args.realtime_plot:
+            metrics_plotter = MetricsPlotter()
+            metrics_plotter.init_realtime_plot()
+    
     # Setup video info
     video_info = sv.VideoInfo.from_video_path(str(source_path))
     fps = video_info.fps if cfg.get('output_fps') is None else cfg['output_fps']
@@ -290,6 +322,7 @@ def main():
                 )
             
             # Pose estimation stage
+            keypoints = None
             if detect_pose:
                 if main_track_id is not None and detections:
                     # Find the main track's bbox
@@ -303,12 +336,53 @@ def main():
                         # Run pose detection
                         dt = 1.0 / fps
                         try:
-                            pose_frame = pose_detector.run(pose_frame, main_bbox, dt)
+                            if args.metrics:
+                                pose_frame, keypoints = pose_detector.run(
+                                    pose_frame, main_bbox, dt, return_keypoints=True
+                                )
+                            else:
+                                pose_frame = pose_detector.run(pose_frame, main_bbox, dt)
                         except Exception as e:
                             print(f"Pose detection error on frame {frame_idx}: {e}")
                         
                         # Also draw the main track's bbox on pose frame
                         draw_bbox(pose_frame, main_bbox, label=f"ID: {main_track_id}")
+            
+            # Calculate and log metrics if enabled
+            if args.metrics and metrics_calculator and metrics_logger:
+                timestamp_ms = (frame_idx / fps) * 1000
+                
+                if keypoints is not None:
+                    # Calculate distances
+                    distances = metrics_calculator.calculate_distances(keypoints)
+                    
+                    # Log distances
+                    metrics_logger.log_distances(
+                        frame_idx, 
+                        timestamp_ms,
+                        distances['knee_distance'],
+                        distances['ankle_distance']
+                    )
+                    
+                    # Log all landmarks
+                    landmarks = metrics_calculator.get_all_landmark_positions(keypoints)
+                    metrics_logger.log_all_landmarks(
+                        frame_idx,
+                        timestamp_ms,
+                        landmarks,
+                        metrics_calculator.landmarks
+                    )
+                    
+                    # Update real-time plot if enabled
+                    if metrics_plotter:
+                        metrics_plotter.update_realtime_plot(
+                            timestamp_ms,
+                            distances['knee_distance'],
+                            distances['ankle_distance']
+                        )
+                else:
+                    # No keypoints detected, log empty values
+                    metrics_logger.log_distances(frame_idx, timestamp_ms, None, None)
             
             # Write frames
             if 'bbox' in writers and bbox_frame is not None:
@@ -337,10 +411,28 @@ def main():
             writer.release()
         if args.show:
             cv2.destroyAllWindows()
+        
+        # Cleanup metrics components
+        if metrics_logger:
+            metrics_logger.close()
+        
+        if metrics_plotter:
+            # Save final plot if real-time plotting was enabled
+            if args.realtime_plot:
+                plot_path = Path(args.metrics_output) / f"{source_path.stem}_realtime_plot.png"
+                metrics_plotter.save_current_plot(str(plot_path))
+            metrics_plotter.close()
     
     print("\nProcessing complete!")
     for stage, path in output_paths:
         print(f"  {stage.capitalize()} output: {path}")
+    
+    # Generate final graph if metrics were collected
+    if args.metrics and metrics_logger:
+        print("\nGenerating distance graph...")
+        plotter = MetricsPlotter()
+        graph_path = Path(args.metrics_output) / f"{source_path.stem}_distances_graph.png"
+        plotter.generate_offline_graph(str(metrics_logger.distances_file), str(graph_path))
 
 
 if __name__ == "__main__":

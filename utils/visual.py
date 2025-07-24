@@ -96,8 +96,8 @@ def draw_skeleton(
     conf_threshold: float = 0.2,
     point_color: Tuple[int, int, int] = (0, 0, 255),
     line_color: Tuple[int, int, int] = (0, 255, 0),
-    point_radius: int = 5,
-    line_thickness: int = 2
+    point_radius: int = 3,
+    line_thickness: int = 1
 ):
     """
     Draw skeleton on image (in-place).

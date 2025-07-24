@@ -109,6 +109,58 @@ Example:
 - Input: `ski_race.mp4`
 - Outputs: `out/ski_race_with_box.mp4`, `out/ski_race_with_pose.mp4`
 
+## Distance Metrics Analysis
+
+The pipeline can calculate and visualize the distances between knee and ankle landmarks throughout a video, providing insights into skiing technique and form.
+
+### Enabling Metrics
+
+Add the `--metrics` flag to enable distance calculations:
+
+```bash
+python3 track.py --source videos/ski_run.mp4 --metrics
+```
+
+### Additional Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--metrics` | False | Enable distance metrics calculation and logging |
+| `--realtime-plot` | False | Show real-time plot of distances during processing |
+| `--metrics-output` | `output` | Directory for metrics CSV files and graphs |
+
+### Example Usage
+
+**Calculate metrics with real-time visualization:**
+```bash
+python3 track.py --source videos/ski_run.mp4 --detect objects,pose --metrics --realtime-plot
+```
+
+**Save metrics to custom directory:**
+```bash
+python3 track.py --source videos/ski_run.mp4 --metrics --metrics-output results/metrics
+```
+
+### Output Files
+
+When metrics are enabled, the following files are generated:
+
+1. **`<video_name>_distances.csv`** - Frame-by-frame knee and ankle distances
+2. **`<video_name>_landmarks.csv`** - Full 3D coordinates and visibility of all landmarks
+3. **`<video_name>_distances_graph.png`** - Visualization of distances over time
+
+### Example Output
+
+<img src="docs/knee_ankle_distance_plot.png" width="600" alt="Knee and ankle distance plot"/>
+
+### Standalone Graph Generation
+
+You can also generate graphs from existing CSV files:
+
+```bash
+python3 generate_graph.py output/ski_run_distances.csv --output custom_graph.png
+```
+
 ## Configuration
 
 The pipeline behavior can be customized via YAML configuration files in the `configs/` directory.
@@ -224,6 +276,12 @@ poser/
 ├── yolo_pose_detector.py   # YOLO-Pose implementation
 ├── mediapipe_pose_detector.py  # MediaPipe Pose implementation
 ├── download_models.py      # Script to download MediaPipe models
+├── generate_graph.py       # Standalone graph generation script
+├── metrics/               # Distance metrics calculation
+│   ├── calculator.py      # PoseMetricsCalculator class
+│   └── storage.py         # MetricsLogger for CSV output
+├── visualization/         # Data visualization
+│   └── plotter.py        # MetricsPlotter for graphs
 ├── utils/                  # Utility modules
 │   ├── smoothing.py       # Keypoint smoothing filters
 │   ├── geometry.py        # Bounding box operations
@@ -234,6 +292,7 @@ poser/
 │   └── .gitkeep          # Keeps folder in git
 ├── out/                   # Default output directory
 │   └── .gitkeep          # Keeps folder in git
+├── output/                # Default metrics output directory
 └── requirements.txt       # Python dependencies
 ```
 

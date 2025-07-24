@@ -53,7 +53,8 @@ class PoseDetector:
         self, 
         frame: np.ndarray, 
         bbox: Optional[np.ndarray], 
-        dt: float = 1/30.0
+        dt: float = 1/30.0,
+        return_keypoints: bool = False
     ) -> np.ndarray:
         """
         Run pose detection on the given bbox region.
@@ -62,15 +63,18 @@ class PoseDetector:
             frame: Original video frame
             bbox: Bounding box [x1, y1, x2, y2] of the person
             dt: Time delta for smoothing
+            return_keypoints: If True, return tuple of (frame, keypoints)
             
         Returns:
-            Updated frame with skeleton drawn
+            Updated frame with skeleton drawn, or tuple of (frame, keypoints)
         """
         if self.detector is None:
             raise RuntimeError("Pose model not initialized")
             
         if bbox is None:
             # No bbox provided, return unchanged frame
+            if return_keypoints:
+                return frame, None
             return frame
             
         # Detect keypoints
@@ -83,5 +87,7 @@ class PoseDetector:
             
             # Draw skeleton
             draw_skeleton(frame, keypoints, self.detector_type, self.detector.conf_min)
-            
+        
+        if return_keypoints:
+            return frame, keypoints
         return frame

@@ -116,6 +116,8 @@ ehthumbs_vista.db
 # Output directories - keep folders but ignore contents
 out/*
 !out/.gitkeep
+output/*
+!output/.gitkeep
 results/
 outputs/
 
