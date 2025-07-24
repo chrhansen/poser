@@ -1,0 +1,3 @@
+# Minimal requirements for linting - no OpenCV needed
+numpy>=1.24.0
+pyyaml>=6.0
