@@ -29,6 +29,11 @@ class MediaPipePoseDetector(PoseDetectorBase):
     def load_model(self, cfg: dict):
         """Load MediaPipe Pose Landmarker model."""
         print(f"Loading MediaPipe Pose Landmarker model: {self.model_path}")
+        
+        # Check if model exists, if not download it
+        import os
+        if not os.path.exists(self.model_path):
+            self._download_model()
 
         base_options = python.BaseOptions(model_asset_path=self.model_path)
         options = vision.PoseLandmarkerOptions(
@@ -208,3 +213,33 @@ class MediaPipePoseDetector(PoseDetectorBase):
         kpts[:, 1] += transform_info["crop_y1"]
 
         return kpts
+
+    def _download_model(self):
+        """Download the MediaPipe pose model if it doesn't exist."""
+        import os
+        import urllib.request
+        
+        # MediaPipe model URLs
+        model_urls = {
+            "pose_landmarker_heavy.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task",
+            "pose_landmarker_full.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+            "pose_landmarker_lite.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
+        }
+        
+        # Extract just the filename for URL lookup
+        model_filename = os.path.basename(self.model_path)
+        
+        if model_filename not in model_urls:
+            raise ValueError(f"Unknown MediaPipe model: {model_filename}")
+        
+        # Create models directory if it doesn't exist
+        os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
+        
+        url = model_urls[model_filename]
+        print(f"Downloading MediaPipe model from {url}...")
+        
+        try:
+            urllib.request.urlretrieve(url, self.model_path)
+            print(f"Successfully downloaded model to {self.model_path}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to download MediaPipe model: {e}")
