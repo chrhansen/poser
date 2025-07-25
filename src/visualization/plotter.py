@@ -143,9 +143,7 @@ class MetricsPlotter:
         # Setup plot
         self.ax.set_xlabel("Time (ms)", fontsize=12)
         self.ax.set_ylabel("Angle (degrees)", fontsize=12)
-        self.ax.set_title(
-            "Real-time Shin Angles", fontsize=14, fontweight="bold"
-        )
+        self.ax.set_title("Real-time Shin Angles", fontsize=14, fontweight="bold")
         self.ax.legend(loc="upper right", fontsize=10)
         self.ax.grid(True, alpha=0.3)
 
@@ -178,8 +176,12 @@ class MetricsPlotter:
 
         # Append data
         self.time_data.append(timestamp_ms)
-        self.angle_2d_data.append(shin_angle_2d if shin_angle_2d is not None else np.nan)
-        self.angle_3d_data.append(shin_angle_3d if shin_angle_3d is not None else np.nan)
+        self.angle_2d_data.append(
+            shin_angle_2d if shin_angle_2d is not None else np.nan
+        )
+        self.angle_3d_data.append(
+            shin_angle_3d if shin_angle_3d is not None else np.nan
+        )
         self.angle_2d_ma_data.append(
             shin_angle_2d_ma if shin_angle_2d_ma is not None else np.nan
         )

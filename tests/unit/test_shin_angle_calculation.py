@@ -133,7 +133,9 @@ class TestShinAngleCalculation:
         # Moving average should be affected by all three measurements
         assert result3["shin_angle_ma"] is not None
         assert result1["shin_angle"] != result2["shin_angle"]  # Different angles
-        assert result1["shin_angle_ma"] == result1["shin_angle"]  # First MA equals first value
+        assert (
+            result1["shin_angle_ma"] == result1["shin_angle"]
+        )  # First MA equals first value
 
     def test_world_coordinates_vs_frame_coordinates(self):
         """Test that world and frame coordinate calculations use separate buffers."""
@@ -152,14 +154,18 @@ class TestShinAngleCalculation:
         world_keypoints = np.zeros((33, 4))
         world_keypoints[[25, 26, 27, 28], :] = [
             [-0.15, 0.3, 0.0, 0.9],  # Left knee
-            [0.15, 0.3, 0.0, 0.9],   # Right knee
+            [0.15, 0.3, 0.0, 0.9],  # Right knee
             [-0.15, 0.0, 0.0, 0.9],  # Left ankle
-            [0.15, 0.0, 0.1, 0.9],   # Right ankle with forward tilt
+            [0.15, 0.0, 0.1, 0.9],  # Right ankle with forward tilt
         ]
 
         # Calculate angles
-        frame_result = calculator.calculate_shin_angles(frame_keypoints, is_world_coords=False)
-        world_result = calculator.calculate_shin_angles(world_keypoints, is_world_coords=True)
+        frame_result = calculator.calculate_shin_angles(
+            frame_keypoints, is_world_coords=False
+        )
+        world_result = calculator.calculate_shin_angles(
+            world_keypoints, is_world_coords=True
+        )
 
         # Should use different buffers
         assert frame_result["shin_angle"] is not None
