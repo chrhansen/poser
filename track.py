@@ -13,11 +13,18 @@ import supervision as sv
 import yaml
 
 from src.detection.detect_objects import Detection, ObjectDetector
+from src.filters.kalman_zero_lag import KalmanRTS
+from src.filters.kalman_2d import Kalman2D
 from src.metrics.calculator import PoseMetricsCalculator
 from src.metrics.storage import MetricsLogger
 from src.pose.detect_pose import PoseDetector
+from src.projection import (
+    estimate_camera_extrinsics,
+    initialize_intrinsics,
+    project_points_batch,
+)
 from src.visualization.plotter import MetricsPlotter
-from utils.visual import draw_bbox
+from utils.visual import draw_bbox, draw_skeleton
 
 
 def parse_args():
@@ -63,6 +70,18 @@ def parse_args():
         action="store_true",
         help="Show real-time plot of distances (requires --metrics)",
     )
+    parser.add_argument(
+        "--smooth",
+        type=str,
+        default="none",
+        choices=["none", "kalman_rts", "kalman_2d"],
+        help="Smoothing algorithm to apply (default: none)",
+    )
+    parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="Render both raw and smoothed skeletons for comparison",
+    )
     # Deprecated: --metrics-output is no longer used, all outputs go to --save_dir
     return parser.parse_args()
 
@@ -71,6 +90,275 @@ def load_config(config_path: Path) -> dict:
     """Load configuration from YAML file."""
     with open(config_path) as f:
         return yaml.safe_load(f)
+
+
+def process_video_with_smoothing(
+    source_path: Path,
+    save_dir: Path,
+    cfg: dict,
+    obj_detector: ObjectDetector | None,
+    pose_detector: PoseDetector | None,
+    args,
+) -> None:
+    """
+    Process video with three-pass Kalman RTS smoothing.
+
+    Pass 1: Detection and buffering
+    Pass 2: Calibration and smoothing
+    Pass 3: Projection and rendering
+    """
+    # Setup video info
+    video_info = sv.VideoInfo.from_video_path(str(source_path))
+    fps = video_info.fps if cfg.get("output_fps") is None else cfg["output_fps"]
+
+    # Open video
+    cap = cv2.VideoCapture(str(source_path))
+    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    print("\n=== Pass 1: Detection and Buffering ===")
+
+    # Buffers for storing data
+    all_frames = []
+    all_detections = []
+    all_landmarks_2d = []
+    all_landmarks_3d = []
+    all_visibility = []
+    timestamps = []
+    main_track_ids = []
+
+    # Tracking state
+    main_track_id = None
+    gap_count = 0
+    frame_idx = 0
+
+    # Pass 1: Read and detect
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            all_frames.append(frame.copy())
+            timestamps.append(frame_idx / fps)
+
+            # Object detection
+            detections = []
+            if obj_detector:
+                detections = obj_detector.run(frame)
+            all_detections.append(detections)
+
+            # Select main track
+            main_track_id, gap_count = select_main_track(
+                detections,
+                obj_detector.track_lengths if obj_detector else {},
+                main_track_id,
+                gap_count,
+            )
+            main_track_ids.append(main_track_id)
+
+            # Pose detection for buffering
+            if pose_detector and main_track_id is not None and detections:
+                # Find the main track's bbox
+                main_bbox = None
+                for bbox, track_id, _conf in detections:
+                    if track_id == main_track_id:
+                        main_bbox = bbox
+                        break
+
+                if main_bbox is not None:
+                    # Get 2D landmarks
+                    _, keypoints_2d = pose_detector.run(
+                        frame, main_bbox, 1.0/fps, return_keypoints=True
+                    )
+
+                    if keypoints_2d is not None:
+                        if args.pose_detector == "mediapipe":
+                            world_landmarks = pose_detector.get_world_landmarks(frame, main_bbox)
+                            if world_landmarks is not None:
+                                all_landmarks_3d.append(world_landmarks[:, :3])
+                                vis = world_landmarks[:, 3]
+                            else:
+                                all_landmarks_3d.append(np.zeros((33, 3)))
+                                vis = np.zeros(33)
+                        else:
+                            all_landmarks_3d.append(np.zeros((33, 3)))
+                            vis = keypoints_2d[:, 3]
+                        all_landmarks_2d.append(keypoints_2d[:, :2])
+                        all_visibility.append(vis)
+                    else:
+                        # No pose detected
+                        all_landmarks_2d.append(np.zeros((33, 2)))
+                        all_landmarks_3d.append(np.zeros((33, 3)))
+                        all_visibility.append(np.zeros(33))
+                else:
+                    # No main bbox
+                    all_landmarks_2d.append(np.zeros((33, 2)))
+                    all_landmarks_3d.append(np.zeros((33, 3)))
+                    all_visibility.append(np.zeros(33))
+            else:
+                # No pose detector or main track
+                all_landmarks_2d.append(np.zeros((33, 2)))
+                all_landmarks_3d.append(np.zeros((33, 3)))
+                all_visibility.append(np.zeros(33))
+
+            frame_idx += 1
+            if frame_idx % 30 == 0:
+                print(f"Pass 1 Progress: {frame_idx}/{total_frames} frames ({frame_idx/total_frames*100:.1f}%)")
+
+    finally:
+        cap.release()
+
+    # Convert to numpy arrays
+    all_landmarks_2d = np.array(all_landmarks_2d)  # (T, N, 2)
+    all_landmarks_3d = np.array(all_landmarks_3d)  # (T, N, 3)
+    all_visibility = np.array(all_visibility)       # (T, N)
+    timestamps = np.array(timestamps)
+
+    # Compute time deltas
+    dt_seq = np.diff(timestamps)
+    dt_seq = np.concatenate([dt_seq, [dt_seq[-1] if len(dt_seq) > 0 else 1.0/fps]])
+
+    print("\n=== Pass 2: Calibration and Smoothing ===")
+
+    # Initialize outputs
+    smooth_landmarks_3d = all_landmarks_3d.copy()
+    smooth_landmarks_2d = all_landmarks_2d.copy()
+
+    if args.smooth in ["kalman_rts", "kalman_2d"]:
+        # Initialize camera intrinsics
+        K = initialize_intrinsics(frame_width, frame_height)
+
+        # Get smoothing config
+        smoothing_cfg = cfg.get("smoothing_cfg", {})
+
+        if args.smooth == "kalman_2d":
+            # Direct 2D smoothing - simpler and more stable
+            print("Smoothing 2D landmarks directly...")
+            kalman_2d = Kalman2D(smoothing_cfg, dt_seq)
+            smooth_landmarks_2d = kalman_2d.batch_smooth_all(all_landmarks_2d, all_visibility)
+
+            # Save intermediate data if requested
+            if cfg.get("save_intermediate", False):
+                np.save(save_dir / "raw_landmarks_2d.npy", all_landmarks_2d)
+                np.save(save_dir / "smooth_landmarks_2d.npy", smooth_landmarks_2d)
+
+        elif args.smooth == "kalman_rts" and args.pose_detector == "mediapipe":
+            # 3D smoothing with projection (original approach)
+            projection_cfg = cfg.get("projection_cfg", {})
+
+            # Initialize Kalman smoother
+            kalman = KalmanRTS(smoothing_cfg, dt_seq)
+
+            # Smooth 3D landmarks
+            print("Smoothing 3D landmarks...")
+            smooth_landmarks_3d = kalman.batch_smooth_all(all_landmarks_3d, all_visibility)
+
+            # Save intermediate data if requested
+            if cfg.get("save_intermediate", False):
+                np.save(save_dir / "raw_landmarks_3d.npy", all_landmarks_3d)
+                np.save(save_dir / "smooth_landmarks_3d.npy", smooth_landmarks_3d)
+
+            # Estimate camera extrinsics
+            print("Estimating camera poses...")
+            R_seq, t_seq = estimate_camera_extrinsics(
+                all_landmarks_2d, all_landmarks_3d, all_visibility, K, projection_cfg
+            )
+
+            # Save camera poses if requested
+            if cfg.get("save_intermediate", False):
+                np.save(save_dir / "camera_R_seq.npy", R_seq)
+                np.save(save_dir / "camera_t_seq.npy", t_seq)
+
+            # Project smoothed 3D landmarks to 2D
+            print("Projecting smoothed landmarks to 2D...")
+            smooth_landmarks_2d = project_points_batch(smooth_landmarks_3d, R_seq, t_seq, K)
+
+    print("\n=== Pass 3: Rendering Output ===")
+
+    # Setup output
+    output_path = save_dir / f"{source_path.stem}_with_pose{source_path.suffix}"
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    writer = cv2.VideoWriter(str(output_path), fourcc, fps, (frame_width, frame_height))
+
+    # Annotators
+    bbox_annotator = sv.BoxAnnotator()
+    label_annotator = sv.LabelAnnotator()
+
+    # Render frames
+    for frame_idx, (frame, detections) in enumerate(zip(all_frames, all_detections)):
+        output_frame = frame.copy()
+
+        # Draw bounding boxes if object detection was enabled
+        if obj_detector and detections:
+            bboxes = np.array([d[0] for d in detections])
+            track_ids = np.array([d[1] for d in detections])
+            confidences = np.array([d[2] for d in detections])
+
+            sv_detections = sv.Detections(
+                xyxy=bboxes,
+                confidence=confidences,
+                class_id=np.zeros(len(bboxes), dtype=int),
+                tracker_id=track_ids,
+            )
+
+            labels = [f"ID: {tid}" for tid in track_ids]
+
+            output_frame = bbox_annotator.annotate(
+                scene=output_frame, detections=sv_detections
+            )
+            output_frame = label_annotator.annotate(
+                scene=output_frame, detections=sv_detections, labels=labels
+            )
+
+        # Draw skeleton
+        if pose_detector and main_track_ids[frame_idx] is not None:
+            # Prepare keypoints for drawing
+            if args.smooth in ["kalman_rts", "kalman_2d"]:
+                # Use smoothed 2D landmarks
+                keypoints = np.zeros((33, 4))
+                keypoints[:, :2] = smooth_landmarks_2d[frame_idx]
+                keypoints[:, 3] = all_visibility[frame_idx]
+            else:
+                # Use raw 2D landmarks
+                keypoints = np.zeros((33, 4))
+                keypoints[:, :2] = all_landmarks_2d[frame_idx]
+                keypoints[:, 3] = all_visibility[frame_idx]
+
+            # Draw skeleton
+            draw_skeleton(output_frame, keypoints, args.pose_detector, pose_detector.detector.conf_min)
+
+            # Draw comparison if requested
+            if args.compare and args.smooth in ["kalman_rts", "kalman_2d"]:
+                # Draw raw skeleton in red color
+                raw_keypoints = np.zeros((33, 4))
+                raw_keypoints[:, :2] = all_landmarks_2d[frame_idx]
+                raw_keypoints[:, 3] = all_visibility[frame_idx]
+
+                # Draw raw skeleton in red
+                draw_skeleton(
+                    output_frame,
+                    raw_keypoints,
+                    args.pose_detector,
+                    pose_detector.detector.conf_min,
+                    point_color=(0, 0, 255),  # Red points
+                    line_color=(0, 100, 255)   # Lighter red lines
+                )
+
+                # Add legend
+                cv2.putText(output_frame, "Raw", (10, 30),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                cv2.putText(output_frame, "Smoothed", (10, 60),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+        writer.write(output_frame)
+
+        if frame_idx % 30 == 0:
+            print(f"Pass 3 Progress: {frame_idx}/{total_frames} frames ({frame_idx/total_frames*100:.1f}%)")
+
+    writer.release()
+    print(f"\nOutput saved to: {output_path}")
 
 
 def select_main_track(
@@ -243,11 +531,20 @@ def main():
     print(f"Active stages: {', '.join(stages)}")
     if detect_pose:
         print(f"Pose detector: {args.pose_detector}")
+    if args.smooth != "none":
+        print(f"Smoothing: {args.smooth}")
     print(f"Output directory: {save_dir}")
     if not args.no_preview:
         print("\nPress 'q' in the preview window to stop processing early.")
 
-    # Process video
+    # Use three-pass processing for Kalman smoothing
+    if args.smooth in ["kalman_rts", "kalman_2d"] and detect_pose:
+        process_video_with_smoothing(
+            source_path, save_dir, cfg, obj_detector, pose_detector, args
+        )
+        return
+
+    # Process video (standard single-pass mode)
     cap = cv2.VideoCapture(str(source_path))
 
     # Get video properties

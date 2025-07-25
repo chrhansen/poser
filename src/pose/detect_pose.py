@@ -35,7 +35,7 @@ def create_pose_detector(detector_type: str, cfg: dict) -> PoseDetectorBase:
 class PoseDetector:
     """
     Wrapper class for pose detection that maintains compatibility with existing code.
-    This class handles the full pipeline including smoothing and drawing.
+    This class handles the full pipeline including drawing.
     """
 
     def __init__(self, cfg: dict):
@@ -63,7 +63,7 @@ class PoseDetector:
         Args:
             frame: Original video frame
             bbox: Bounding box [x1, y1, x2, y2] of the person
-            dt: Time delta for smoothing
+            dt: Time delta (unused, kept for compatibility)
             return_keypoints: If True, return tuple of (frame, keypoints)
 
         Returns:
@@ -82,10 +82,6 @@ class PoseDetector:
         keypoints = self.detector.detect(frame, bbox)
 
         if keypoints is not None and len(keypoints) > 0:
-            # Apply smoothing if enabled
-            if self.detector.smoothing_cfg.get("kind", "one_euro") != "none":
-                keypoints = self.detector._smooth_keypoints(keypoints, dt)
-
             # Draw skeleton
             draw_skeleton(frame, keypoints, self.detector_type, self.detector.conf_min)
 
