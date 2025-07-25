@@ -105,26 +105,26 @@ The script creates a subfolder in the output directory (default: `output/`) base
 
 - **Object Tracking**: `<video_name>_with_box.mp4` - Shows bounding boxes with tracker IDs
 - **Pose Estimation**: `<video_name>_with_pose.mp4` - Shows skeletal keypoints on the main tracked skier
-- **Distance Metrics**: `<video_name>_distances.csv` - Frame-by-frame distance measurements (when `--metrics` is enabled)
+- **Shin Angle Metrics**: `<video_name>_angles.csv` - Frame-by-frame shin angle measurements (when `--metrics` is enabled)
 - **Landmarks**: `<video_name>_landmarks.csv` - Raw landmark positions (when `--metrics` is enabled)
-- **Distance Graph**: `<video_name>_distances_graph.png` - Visualization of distances over time (when `--metrics` is enabled)
+- **Shin Angles Graph**: `<video_name>_angles_graph.png` - Visualization of shin angles over time (when `--metrics` is enabled)
 
 Example:
 - Input: `ski_race.mp4`
 - Output folder: `output/ski_race_mp4/`
   - `ski_race_with_box.mp4`
   - `ski_race_with_pose.mp4` 
-  - `ski_race_distances.csv`
+  - `ski_race_angles.csv`
   - `ski_race_landmarks.csv`
-  - `ski_race_distances_graph.png`
+  - `ski_race_angles_graph.png`
 
-## Distance Metrics Analysis
+## Shin Angle Metrics Analysis
 
-The pipeline can calculate and visualize the distances between knee and ankle landmarks throughout a video, providing insights into skiing technique and form.
+The pipeline can calculate and visualize shin angles (how parallel the skier's shins are) throughout a video, providing insights into skiing technique and form. Lower angles indicate more parallel shins, which is typically better skiing form.
 
 ### Enabling Metrics
 
-Add the `--metrics` flag to enable distance calculations:
+Add the `--metrics` flag to enable shin angle calculations:
 
 ```bash
 python3 track.py --source videos/ski_run.mp4 --metrics
@@ -134,8 +134,8 @@ python3 track.py --source videos/ski_run.mp4 --metrics
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--metrics` | False | Enable distance metrics calculation and logging |
-| `--realtime-plot` | False | Show real-time plot of distances during processing |
+| `--metrics` | False | Enable shin angle metrics calculation and logging |
+| `--realtime-plot` | False | Show real-time plot of shin angles during processing |
 
 ### Example Usage
 
@@ -153,20 +153,20 @@ python3 track.py --source videos/ski_run.mp4 --metrics --save_dir results
 
 When metrics are enabled, the following files are generated:
 
-1. **`<video_name>_distances.csv`** - Frame-by-frame knee and ankle distances
+1. **`<video_name>_angles.csv`** - Frame-by-frame shin angles (2D and 3D when available)
 2. **`<video_name>_landmarks.csv`** - Full 3D coordinates and visibility of all landmarks
-3. **`<video_name>_distances_graph.png`** - Visualization of distances over time
+3. **`<video_name>_angles_graph.png`** - Visualization of shin angles over time
 
 ### Example Output
 
-<img src="docs/knee_ankle_distance_plot.png" width="600" alt="Knee and ankle distance plot"/>
+<img src="docs/shin_angles_plot.png" width="600" alt="Shin angles plot"/>
 
 ### Standalone Graph Generation
 
 You can also generate graphs from existing CSV files:
 
 ```bash
-python3 generate_graph.py output/ski_run_distances.csv --output custom_graph.png
+python3 generate_graph.py output/ski_run_angles.csv --output custom_graph.png
 ```
 
 ## Configuration
@@ -288,7 +288,7 @@ poser/
 │   │   ├── pose_detector_base.py   # Abstract base class
 │   │   ├── yolo_pose_detector.py   # YOLO implementation
 │   │   └── mediapipe_pose_detector.py  # MediaPipe implementation
-│   ├── metrics/           # Distance metrics calculation
+│   ├── metrics/           # Shin angle metrics calculation
 │   │   ├── calculator.py  # PoseMetricsCalculator class
 │   │   └── storage.py     # MetricsLogger for CSV output
 │   └── visualization/     # Data visualization

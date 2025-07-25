@@ -463,11 +463,11 @@ def main():
 
     # Generate final graph if metrics were collected
     if args.metrics and metrics_logger:
-        print("\nGenerating distance graph...")
+        print("\nGenerating angles graph...")
         plotter = MetricsPlotter()
-        graph_path = save_dir / f"{source_path.stem}_distances_graph.png"
+        graph_path = save_dir / f"{source_path.stem}_angles_graph.png"
         plotter.generate_offline_graph(
-            str(metrics_logger.distances_file), str(graph_path)
+            str(metrics_logger.angles_file), str(graph_path)
         )
 
 

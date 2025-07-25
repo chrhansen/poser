@@ -14,25 +14,25 @@ class TestMetricsLogger:
 
         assert logger.video_name == "test_video"
         assert logger.output_dir == temp_output_dir
-        assert logger.distances_file.exists()
+        assert logger.angles_file.exists()
         assert logger.landmarks_file.exists()
 
         # Close files for cleanup
         logger.close()
 
-    def test_log_distances(self, temp_output_dir):
-        """Test logging distance measurements."""
+    def test_log_shin_angles(self, temp_output_dir):
+        """Test logging shin angle measurements."""
         logger = MetricsLogger("test_video.mp4", str(temp_output_dir))
 
         # Log some test data
-        logger.log_distances(0, 0.0, 40.5, 50.3, 41.2, 50.8)
-        logger.log_distances(1, 33.3, 42.1, 51.7, 41.3, 51.0)
-        logger.log_distances(2, 66.6, None, None)  # Test None values
+        logger.log_shin_angles(0, 0.0, 45.5, 45.2, 44.8, 44.5)
+        logger.log_shin_angles(1, 33.3, 42.1, 43.8, 41.7, 43.3)
+        logger.log_shin_angles(2, 66.6, None, None, None, None)  # Test None values
 
         logger.close()
 
         # Read and verify the CSV
-        with open(logger.distances_file) as f:
+        with open(logger.angles_file) as f:
             reader = csv.reader(f)
             rows = list(reader)
 
@@ -40,26 +40,26 @@ class TestMetricsLogger:
         assert rows[0] == [
             "frame_number",
             "timestamp_ms",
-            "knee_distance",
-            "ankle_distance",
-            "knee_distance_ma",
-            "ankle_distance_ma",
+            "shin_angle_2d",
+            "shin_angle_2d_ma",
+            "shin_angle_3d",
+            "shin_angle_3d_ma",
         ]
         assert rows[1] == [
             "0",
             "0.00",
-            "40.500000",
-            "50.300000",
-            "41.200000",
-            "50.800000",
+            "45.50",
+            "45.20",
+            "44.80",
+            "44.50",
         ]
         assert rows[2] == [
             "1",
             "33.30",
-            "42.100000",
-            "51.700000",
-            "41.300000",
-            "51.000000",
+            "42.10",
+            "43.80",
+            "41.70",
+            "43.30",
         ]
         assert rows[3] == [
             "2",
@@ -127,7 +127,7 @@ class TestMetricsLogger:
         logger = MetricsLogger("/path/to/my_video.mp4", str(temp_output_dir))
 
         assert logger.video_name == "my_video"
-        assert logger.distances_file.name == "my_video_distances.csv"
+        assert logger.angles_file.name == "my_video_angles.csv"
         assert logger.landmarks_file.name == "my_video_landmarks.csv"
 
         logger.close()
@@ -139,9 +139,9 @@ class TestMetricsLogger:
 
         captured = capsys.readouterr()
         assert "Metrics saved to:" in captured.out
-        assert "Distances:" in captured.out
+        assert "Angles:" in captured.out
         assert "Landmarks:" in captured.out
-        assert str(logger.distances_file) in captured.out
+        assert str(logger.angles_file) in captured.out
         assert str(logger.landmarks_file) in captured.out
 
     def test_log_world_landmarks(self, temp_output_dir):

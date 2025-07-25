@@ -25,7 +25,7 @@ class MetricsLogger:
         self.output_dir.mkdir(exist_ok=True)
 
         # Setup file paths
-        self.distances_file = self.output_dir / f"{self.video_name}_distances.csv"
+        self.angles_file = self.output_dir / f"{self.video_name}_angles.csv"
         self.landmarks_file = self.output_dir / f"{self.video_name}_landmarks.csv"
         self.world_landmarks_file = (
             self.output_dir / f"{self.video_name}_world_landmarks.csv"
@@ -36,10 +36,10 @@ class MetricsLogger:
 
     def _init_files(self):
         """Initialize CSV files with headers."""
-        # Distances file (now for shin angles)
-        self.distances_fp = open(self.distances_file, "w", newline="")
-        self.distances_writer = csv.writer(self.distances_fp)
-        self.distances_writer.writerow(
+        # Angles file for shin angles
+        self.angles_fp = open(self.angles_file, "w", newline="")
+        self.angles_writer = csv.writer(self.angles_fp)
+        self.angles_writer.writerow(
             [
                 "frame_number",
                 "timestamp_ms",
@@ -97,7 +97,7 @@ class MetricsLogger:
         angle_3d_str = "" if shin_angle_3d is None else f"{shin_angle_3d:.2f}"
         angle_3d_ma_str = "" if shin_angle_3d_ma is None else f"{shin_angle_3d_ma:.2f}"
 
-        self.distances_writer.writerow(
+        self.angles_writer.writerow(
             [
                 frame_number,
                 f"{timestamp_ms:.2f}",
@@ -109,7 +109,7 @@ class MetricsLogger:
         )
 
         # Flush to ensure data is written
-        self.distances_fp.flush()
+        self.angles_fp.flush()
 
     def log_all_landmarks(
         self,
@@ -205,14 +205,14 @@ class MetricsLogger:
 
     def close(self):
         """Close all open files."""
-        self.distances_fp.close()
+        self.angles_fp.close()
         self.landmarks_fp.close()
 
         if self.world_landmarks_fp:
             self.world_landmarks_fp.close()
 
         print("Metrics saved to:")
-        print(f"  - Distances: {self.distances_file}")
+        print(f"  - Angles: {self.angles_file}")
         print(f"  - Landmarks: {self.landmarks_file}")
 
         if self.has_world_landmarks:
