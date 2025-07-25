@@ -66,7 +66,7 @@ class MetricsPlotter:
             linewidth=2,
             alpha=0.7,
         )
-        
+
         # Plot 3D shin angle if available
         has_3d = df["shin_angle_3d"].notna().any()
         if has_3d:
