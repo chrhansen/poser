@@ -93,8 +93,11 @@ class PoseMetricsCalculator:
             self.shin_angle_3d_buffer if is_world_coords else self.shin_angle_2d_buffer
         )
 
-        # Update buffer and calculate moving average
-        angle_ma = self._update_buffer_and_calculate_ma(buffer, shin_angle)
+        # Moving average optional
+        if self.window_size and self.window_size > 1:
+            angle_ma = self._update_buffer_and_calculate_ma(buffer, shin_angle)
+        else:
+            angle_ma = None
 
         return {
             "shin_angle": shin_angle,

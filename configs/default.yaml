@@ -3,10 +3,28 @@ pose_model: models/yolo11x-pose.pt       # YOLO pose model path
 device: auto                     # "auto" | "cpu" | "mps" | "cuda"
 pad_ratio: 0.5
 conf_min: 0.2
-smoothing:
-  kind: none  # Disable smoothing completely for no lag
 tracker:
   track_high_thresh: 0.6
   track_low_thresh: 0.1
   new_track_thresh: 0.7
 output_fps: null                 # keep original if null
+
+# Kalman RTS smoothing configuration
+smoothing_cfg:
+  kind: kalman_rts
+  # Process noise: uncertainty in the motion model (expected acceleration)
+  process_noise: 0.01                 # (m/s^2)^2, corresponds to σ=0.1 m/s^2.
+  # Measurement noise: uncertainty in the MediaPipe detection
+  measurement_noise: 1.0e-8           # metres^2, tuned for responsive smoothing.
+  adapt_R_by_visibility: true
+  adapt_R_by_visibility_factor: 1.0   # Multiplier for visibility adaptation
+  # 2D smoothing parameters (for kalman_2d mode)
+  process_noise_2d: 100.0             # pixels/s^2
+  measurement_noise_2d: 4.0           # pixels^2
+
+# Camera projection configuration
+projection_cfg:
+  # Parameters for Perspective-n-Point (PnP) camera pose estimation
+  pnp_visibility_threshold: 0.8       # Minimum landmark visibility to be used in PnP
+  pnp_ransac_iterations: 100
+  pnp_ransac_reprojection_error: 8.0  # RANSAC reprojection error threshold in pixels

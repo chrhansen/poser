@@ -17,14 +17,10 @@ class MetricsPlotter:
         """Initialize the plotter."""
         self.fig = None
         self.ax = None
-        self.angle_2d_line = None
-        self.angle_2d_ma_line = None
-        self.angle_3d_line = None
-        self.angle_3d_ma_line = None
-        self.angle_2d_data = []
-        self.angle_2d_ma_data = []
-        self.angle_3d_data = []
-        self.angle_3d_ma_data = []
+        self.angle_3d_raw_line = None
+        self.angle_3d_smooth_line = None
+        self.angle_3d_raw_data = []
+        self.angle_3d_smooth_data = []
         self.time_data = []
         self.update_interval = 5  # Update plot every 5 frames
         self.frame_count = 0
@@ -41,63 +37,36 @@ class MetricsPlotter:
         df = pd.read_csv(csv_path)
 
         # Handle missing values
-        df["shin_angle_2d"] = pd.to_numeric(df["shin_angle_2d"], errors="coerce")
+        # shin_angle_3d_ma contains raw values, shin_angle_3d contains smoothed values
         df["shin_angle_3d"] = pd.to_numeric(df["shin_angle_3d"], errors="coerce")
-
-        # Check if moving average columns exist
-        has_ma = "shin_angle_2d_ma" in df.columns and "shin_angle_3d_ma" in df.columns
-        if has_ma:
-            df["shin_angle_2d_ma"] = pd.to_numeric(
-                df["shin_angle_2d_ma"], errors="coerce"
-            )
-            df["shin_angle_3d_ma"] = pd.to_numeric(
-                df["shin_angle_3d_ma"], errors="coerce"
-            )
+        df["shin_angle_3d_ma"] = pd.to_numeric(df["shin_angle_3d_ma"], errors="coerce")
 
         # Create figure
         plt.figure(figsize=(12, 6))
 
-        # Plot 2D shin angle
-        plt.plot(
-            df["timestamp_ms"],
-            df["shin_angle_2d"],
-            label="Shin Angle 2D (degrees)",
-            color="blue",
-            linewidth=2,
-            alpha=0.7,
-        )
-
-        # Plot 3D shin angle if available
-        has_3d = df["shin_angle_3d"].notna().any()
-        if has_3d:
+        # Plot raw 3D shin angle (stored in shin_angle_3d_ma column)
+        has_raw = df["shin_angle_3d_ma"].notna().any()
+        if has_raw:
             plt.plot(
                 df["timestamp_ms"],
-                df["shin_angle_3d"],
-                label="Shin Angle 3D (degrees)",
-                color="green",
+                df["shin_angle_3d_ma"],
+                label="Shin Angle 3D Raw (degrees)",
+                color="red",
                 linewidth=2,
                 alpha=0.7,
             )
 
-        # Plot moving averages if available
-        if has_ma:
+        # Plot smoothed 3D shin angle (stored in shin_angle_3d column)
+        has_smooth = df["shin_angle_3d"].notna().any()
+        if has_smooth:
             plt.plot(
                 df["timestamp_ms"],
-                df["shin_angle_2d_ma"],
-                label="Shin Angle 2D (MA)",
-                color="darkblue",
+                df["shin_angle_3d"],
+                label="Shin Angle 3D Smoothed (degrees)",
+                color="green",
                 linewidth=2,
-                linestyle="--",
+                alpha=0.9,
             )
-            if has_3d:
-                plt.plot(
-                    df["timestamp_ms"],
-                    df["shin_angle_3d_ma"],
-                    label="Shin Angle 3D (MA)",
-                    color="darkgreen",
-                    linewidth=2,
-                    linestyle="--",
-                )
 
         # Customize plot
         plt.xlabel("Time (ms)", fontsize=12)
@@ -127,17 +96,11 @@ class MetricsPlotter:
         self.fig, self.ax = plt.subplots(figsize=(10, 6))
 
         # Initialize empty lines
-        (self.angle_2d_line,) = self.ax.plot(
-            [], [], "b-", label="Shin Angle 2D", linewidth=2, alpha=0.7
+        (self.angle_3d_raw_line,) = self.ax.plot(
+            [], [], "r-", label="Shin Angle 3D Raw", linewidth=2, alpha=0.7
         )
-        (self.angle_3d_line,) = self.ax.plot(
-            [], [], "g-", label="Shin Angle 3D", linewidth=2, alpha=0.7
-        )
-        (self.angle_2d_ma_line,) = self.ax.plot(
-            [], [], "b--", label="Shin Angle 2D (MA)", linewidth=2
-        )
-        (self.angle_3d_ma_line,) = self.ax.plot(
-            [], [], "g--", label="Shin Angle 3D (MA)", linewidth=2
+        (self.angle_3d_smooth_line,) = self.ax.plot(
+            [], [], "g-", label="Shin Angle 3D Smoothed", linewidth=2, alpha=0.9
         )
 
         # Setup plot
@@ -157,36 +120,26 @@ class MetricsPlotter:
     def update_realtime_plot(
         self,
         timestamp_ms: float,
-        shin_angle_2d: float | None,
-        shin_angle_2d_ma: float | None = None,
-        shin_angle_3d: float | None = None,
-        shin_angle_3d_ma: float | None = None,
+        shin_angle_3d_raw: float | None = None,
+        shin_angle_3d_smooth: float | None = None,
     ):
         """
         Update the real-time plot with new data.
 
         Args:
             timestamp_ms: Current timestamp in milliseconds
-            shin_angle_2d: Shin angle in 2D (frame coordinates) in degrees
-            shin_angle_2d_ma: Moving average of 2D shin angle
-            shin_angle_3d: Shin angle in 3D (world coordinates) in degrees
-            shin_angle_3d_ma: Moving average of 3D shin angle
+            shin_angle_3d_raw: Raw shin angle in 3D (world coordinates) in degrees
+            shin_angle_3d_smooth: Smoothed shin angle in 3D (world coordinates) in degrees
         """
         self.frame_count += 1
 
         # Append data
         self.time_data.append(timestamp_ms)
-        self.angle_2d_data.append(
-            shin_angle_2d if shin_angle_2d is not None else np.nan
+        self.angle_3d_raw_data.append(
+            shin_angle_3d_raw if shin_angle_3d_raw is not None else np.nan
         )
-        self.angle_3d_data.append(
-            shin_angle_3d if shin_angle_3d is not None else np.nan
-        )
-        self.angle_2d_ma_data.append(
-            shin_angle_2d_ma if shin_angle_2d_ma is not None else np.nan
-        )
-        self.angle_3d_ma_data.append(
-            shin_angle_3d_ma if shin_angle_3d_ma is not None else np.nan
+        self.angle_3d_smooth_data.append(
+            shin_angle_3d_smooth if shin_angle_3d_smooth is not None else np.nan
         )
 
         # Only update plot at specified interval
@@ -194,10 +147,8 @@ class MetricsPlotter:
             return
 
         # Update line data
-        self.angle_2d_line.set_data(self.time_data, self.angle_2d_data)
-        self.angle_3d_line.set_data(self.time_data, self.angle_3d_data)
-        self.angle_2d_ma_line.set_data(self.time_data, self.angle_2d_ma_data)
-        self.angle_3d_ma_line.set_data(self.time_data, self.angle_3d_ma_data)
+        self.angle_3d_raw_line.set_data(self.time_data, self.angle_3d_raw_data)
+        self.angle_3d_smooth_line.set_data(self.time_data, self.angle_3d_smooth_data)
 
         # Adjust axis limits
         if len(self.time_data) > 0:
@@ -207,12 +158,10 @@ class MetricsPlotter:
             self.ax.set_xlim(x_min, x_max)
 
             # Y-axis: auto-scale with some padding
-            valid_2d = [d for d in self.angle_2d_data if not np.isnan(d)]
-            valid_3d = [d for d in self.angle_3d_data if not np.isnan(d)]
-            valid_2d_ma = [d for d in self.angle_2d_ma_data if not np.isnan(d)]
-            valid_3d_ma = [d for d in self.angle_3d_ma_data if not np.isnan(d)]
+            valid_raw = [d for d in self.angle_3d_raw_data if not np.isnan(d)]
+            valid_smooth = [d for d in self.angle_3d_smooth_data if not np.isnan(d)]
 
-            all_valid = valid_2d + valid_3d + valid_2d_ma + valid_3d_ma
+            all_valid = valid_raw + valid_smooth
             if all_valid:
                 y_min = max(0, min(all_valid) * 0.9)
                 y_max = min(180, max(all_valid) * 1.1)
