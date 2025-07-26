@@ -13,9 +13,9 @@ output_fps: null                 # keep original if null
 smoothing_cfg:
   kind: kalman_rts
   # Process noise: uncertainty in the motion model (expected acceleration)
-  process_noise: 0.01                 # (m/s^2)^2, corresponds to σ=0.1 m/s^2
+  process_noise: 0.01                 # (m/s^2)^2, corresponds to σ=0.1 m/s^2.
   # Measurement noise: uncertainty in the MediaPipe detection
-  measurement_noise: 4.0e-4           # metres^2, corresponds to σ=20mm
+  measurement_noise: 1.0e-8           # metres^2, tuned for responsive smoothing.
   adapt_R_by_visibility: true
   adapt_R_by_visibility_factor: 1.0   # Multiplier for visibility adaptation
   # 2D smoothing parameters (for kalman_2d mode)

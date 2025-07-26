@@ -25,6 +25,7 @@ from src.projection import (
 )
 from src.visualization.plotter import MetricsPlotter
 from utils.visual import draw_bbox, draw_skeleton
+from src.visualization.render_world_debug import render_world_skeletons
 
 
 def parse_args():
@@ -56,31 +57,26 @@ def parse_args():
     parser.add_argument(
         "--pose-detector",
         type=str,
-        default="yolo",
+        default="mediapipe",
         choices=["yolo", "mediapipe"],
-        help="Pose detection engine to use (default: yolo)",
-    )
-    parser.add_argument(
-        "--metrics",
-        action="store_true",
-        help="Enable distance metrics calculation and logging",
+        help="Pose detection engine to use (default: mediapipe)",
     )
     parser.add_argument(
         "--realtime-plot",
         action="store_true",
-        help="Show real-time plot of distances (requires --metrics)",
+        help="Show real-time plot of shin angles",
     )
     parser.add_argument(
-        "--smooth",
-        type=str,
-        default="none",
-        choices=["none", "kalman_rts", "kalman_2d"],
-        help="Smoothing algorithm to apply (default: none)",
+        "--process-noise",
+        type=float,
+        default=None,
+        help="Override Kalman process noise variance (m/s^2)^2",
     )
     parser.add_argument(
-        "--compare",
-        action="store_true",
-        help="Render both raw and smoothed skeletons for comparison",
+        "--measurement-noise",
+        type=float,
+        default=None,
+        help="Override Kalman measurement noise variance (m^2)",
     )
     # Deprecated: --metrics-output is no longer used, all outputs go to --save_dir
     return parser.parse_args()
@@ -116,6 +112,13 @@ def process_video_with_smoothing(
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    # Initialize metrics components (always enabled)
+    metrics_calculator = None
+    metrics_logger = None
+    if pose_detector:
+        metrics_calculator = PoseMetricsCalculator(detector_type=args.pose_detector, window_size=1)
+        metrics_logger = MetricsLogger(str(source_path), output_dir=str(save_dir))
 
     print("\n=== Pass 1: Detection and Buffering ===")
 
@@ -216,9 +219,20 @@ def process_video_with_smoothing(
     all_visibility = np.array(all_visibility)       # (T, N)
     timestamps = np.array(timestamps)
 
+    # Persist raw landmark data for offline smoothing/analysis
+    np.save(save_dir / "raw_landmarks_3d.npy", all_landmarks_3d)
+    np.save(save_dir / "visibility.npy", all_visibility)
+
+    # Also store as CSV for easy inspection
+    np.savetxt(save_dir / "raw_landmarks_3d.csv", all_landmarks_3d.reshape(all_landmarks_3d.shape[0], -1), delimiter=",")
+    np.savetxt(save_dir / "visibility.csv", all_visibility, delimiter=",")
+
     # Compute time deltas
     dt_seq = np.diff(timestamps)
     dt_seq = np.concatenate([dt_seq, [dt_seq[-1] if len(dt_seq) > 0 else 1.0/fps]])
+
+    # Save dt sequence for offline smoother
+    np.save(save_dir / "dt_seq.npy", dt_seq)
 
     print("\n=== Pass 2: Calibration and Smoothing ===")
 
@@ -231,7 +245,11 @@ def process_video_with_smoothing(
         K = initialize_intrinsics(frame_width, frame_height)
 
         # Get smoothing config
-        smoothing_cfg = cfg.get("smoothing_cfg", {})
+        smoothing_cfg = cfg.get("smoothing_cfg", {}).copy()
+        if args.process_noise is not None:
+            smoothing_cfg["process_noise"] = args.process_noise
+        if args.measurement_noise is not None:
+            smoothing_cfg["measurement_noise"] = args.measurement_noise
 
         if args.smooth == "kalman_2d":
             # Direct 2D smoothing - simpler and more stable
@@ -254,6 +272,16 @@ def process_video_with_smoothing(
             # Smooth 3D landmarks
             print("Smoothing 3D landmarks...")
             smooth_landmarks_3d = kalman.batch_smooth_all(all_landmarks_3d, all_visibility)
+
+            # Render debug world skeletons
+            debug_path = save_dir / "world_debug.mp4"
+            render_world_skeletons(all_landmarks_3d, smooth_landmarks_3d, debug_path, fps)
+            inter_path = save_dir / "world_debug.html"
+            try:
+                from src.visualization.render_world_interactive import render_world_interactive
+                render_world_interactive(all_landmarks_3d, smooth_landmarks_3d, inter_path, fps)
+            except Exception as e:
+                print(f"Interactive debug generation failed: {e}")
 
             # Save intermediate data if requested
             if cfg.get("save_intermediate", False):
@@ -329,8 +357,50 @@ def process_video_with_smoothing(
             # Draw skeleton
             draw_skeleton(output_frame, keypoints, args.pose_detector, pose_detector.detector.conf_min)
 
-            # Draw comparison if requested
-            if args.compare and args.smooth in ["kalman_rts", "kalman_2d"]:
+            # Calculate and log metrics
+            if metrics_calculator and metrics_logger:
+                timestamp_ms = (frame_idx / fps) * 1000
+
+                # Use the appropriate keypoints based on smoothing
+                if args.smooth in ["kalman_rts", "kalman_2d"]:
+                    # For smoothed, keypoints already contains the smoothed 2D data
+                    pass  # keypoints already set above
+                else:
+                    # For raw, keypoints already contains raw 2D data
+                    pass  # keypoints already set above
+
+                # Calculate shin angles for 2D
+                angles_2d = metrics_calculator.calculate_shin_angles(keypoints, is_world_coords=False)
+
+                # Calculate 3D angles if available
+                angles_3d_raw = {"shin_angle": None}
+                angles_3d_smooth = {"shin_angle": None}
+
+                if args.pose_detector == "mediapipe" and frame_idx < len(all_landmarks_3d):
+                    # Raw 3D angles
+                    raw_world = all_landmarks_3d[frame_idx]
+                    if not np.all(raw_world == 0):
+                        raw_world_kpts = np.hstack([raw_world, all_visibility[frame_idx].reshape(-1, 1)])
+                        angles_3d_raw = metrics_calculator.calculate_shin_angles(raw_world_kpts, is_world_coords=True)
+
+                    # Smoothed 3D angles
+                    if args.smooth == "kalman_rts":
+                        smooth_world = smooth_landmarks_3d[frame_idx]
+                        smooth_world_kpts = np.hstack([smooth_world, all_visibility[frame_idx].reshape(-1, 1)])
+                        angles_3d_smooth = metrics_calculator.calculate_shin_angles(smooth_world_kpts, is_world_coords=True)
+
+                # Log shin angles (raw world goes to shin_angle_3d_ma, smoothed to shin_angle_3d)
+                metrics_logger.log_shin_angles(
+                    frame_idx,
+                    timestamp_ms,
+                    angles_2d["shin_angle"],
+                    None,  # No 2D MA needed
+                    angles_3d_smooth["shin_angle"] if angles_3d_smooth["shin_angle"] is not None else angles_3d_raw["shin_angle"],
+                    angles_3d_raw["shin_angle"]
+                )
+
+            # Always draw raw skeleton overlay for comparison
+            if True:
                 # Draw raw skeleton in red color
                 raw_keypoints = np.zeros((33, 4))
                 raw_keypoints[:, :2] = all_landmarks_2d[frame_idx]
@@ -359,6 +429,17 @@ def process_video_with_smoothing(
 
     writer.release()
     print(f"\nOutput saved to: {output_path}")
+
+    # Close metrics logger
+    if metrics_logger:
+        metrics_logger.close()
+
+    # Generate shin angle plot
+    if metrics_logger and pose_detector:
+        print("\nGenerating angles graph...")
+        plotter = MetricsPlotter()
+        graph_path = save_dir / f"{source_path.stem}_angles_graph.png"
+        plotter.generate_offline_graph(str(metrics_logger.angles_file), str(graph_path))
 
 
 def select_main_track(
@@ -403,6 +484,9 @@ def select_main_track(
 def main():
     """Main pipeline orchestration."""
     args = parse_args()
+
+    # Force smoothing mode to kalman_rts (always-on)
+    setattr(args, "smooth", "kalman_rts")
 
     # Load configuration
     cfg = load_config(args.config)
@@ -500,13 +584,13 @@ def main():
         pose_detector = PoseDetector(cfg)
         pose_detector.load_model(cfg, detector_type=args.pose_detector)
 
-    # Initialize metrics components if enabled
+    # Initialize metrics components (always enabled for pose detection)
     metrics_calculator = None
     metrics_logger = None
     metrics_plotter = None
 
-    if args.metrics and detect_pose:
-        metrics_calculator = PoseMetricsCalculator(detector_type=args.pose_detector)
+    if detect_pose:
+        metrics_calculator = PoseMetricsCalculator(detector_type=args.pose_detector, window_size=1)
         metrics_logger = MetricsLogger(str(source_path), output_dir=str(save_dir))
 
         if args.realtime_plot:
@@ -531,8 +615,7 @@ def main():
     print(f"Active stages: {', '.join(stages)}")
     if detect_pose:
         print(f"Pose detector: {args.pose_detector}")
-    if args.smooth != "none":
-        print(f"Smoothing: {args.smooth}")
+    print("Smoothing: kalman_rts (always enabled)")
     print(f"Output directory: {save_dir}")
     if not args.no_preview:
         print("\nPress 'q' in the preview window to stop processing early.")
@@ -645,8 +728,8 @@ def main():
                         # Also draw the main track's bbox on pose frame
                         draw_bbox(pose_frame, main_bbox, label=f"ID: {main_track_id}")
 
-            # Calculate and log metrics if enabled
-            if args.metrics and metrics_calculator and metrics_logger:
+            # Calculate and log metrics
+            if metrics_calculator and metrics_logger:
                 timestamp_ms = (frame_idx / fps) * 1000
 
                 if keypoints is not None:
@@ -655,8 +738,9 @@ def main():
                         keypoints, is_world_coords=False
                     )
 
-                    # Initialize 3D angles as None (will be filled for MediaPipe)
-                    angles_3d = {"shin_angle": None, "shin_angle_ma": None}
+                    # Initialize 3D angles dicts
+                    angles_3d_raw = {"shin_angle": None}
+                    angles_3d_smooth = {"shin_angle": None}
 
                     # Log all landmarks
                     landmarks = metrics_calculator.get_all_landmark_positions(keypoints)
@@ -664,37 +748,31 @@ def main():
                         frame_idx, timestamp_ms, landmarks, metrics_calculator.landmarks
                     )
 
-                    # Log world landmarks and calculate 3D angles if available (MediaPipe only)
+                    # World coordinates handling (MediaPipe only)
                     if args.pose_detector == "mediapipe" and main_bbox is not None:
-                        world_keypoints = pose_detector.get_world_landmarks(
-                            frame, main_bbox
-                        )
-                        if world_keypoints is not None:
-                            # Calculate shin angles for 3D world coordinates
-                            angles_3d = metrics_calculator.calculate_shin_angles(
-                                world_keypoints, is_world_coords=True
-                            )
+                        world_keypoints_raw = pose_detector.get_world_landmarks(frame, main_bbox)
 
-                            world_landmarks = (
-                                metrics_calculator.get_all_landmark_positions(
-                                    world_keypoints
-                                )
-                            )
-                            metrics_logger.log_world_landmarks(
-                                frame_idx,
-                                timestamp_ms,
-                                world_landmarks,
-                                metrics_calculator.landmarks,
-                            )
+                        if world_keypoints_raw is not None:
+                            angles_3d_raw = metrics_calculator.calculate_shin_angles(world_keypoints_raw, is_world_coords=True)
 
-                    # Log shin angles (both 2D and 3D)
+                            world_landmarks = metrics_calculator.get_all_landmark_positions(world_keypoints_raw)
+                            metrics_logger.log_world_landmarks(frame_idx, timestamp_ms, world_landmarks, metrics_calculator.landmarks)
+
+                        # If smoothing active, use smoothed world coords for angle
+                        if args.smooth == "kalman_rts" and 'smooth_landmarks_3d' in locals():
+                            sm_pts = smooth_landmarks_3d[frame_idx]
+                            # Attach fake visibility of 1 to match expected shape
+                            sm_kpts = np.hstack([sm_pts, np.ones((sm_pts.shape[0],1))])
+                            angles_3d_smooth = metrics_calculator.calculate_shin_angles(sm_kpts, is_world_coords=True)
+
+                    # Log shin angles: raw world in shin_angle_3d_ma column, smoothed in shin_angle_3d
                     metrics_logger.log_shin_angles(
                         frame_idx,
                         timestamp_ms,
                         angles_2d["shin_angle"],
-                        angles_2d["shin_angle_ma"],
-                        angles_3d["shin_angle"],
-                        angles_3d["shin_angle_ma"],
+                        None,
+                        angles_3d_smooth["shin_angle"],
+                        angles_3d_raw["shin_angle"],
                     )
 
                     # Update real-time plot if enabled
@@ -759,7 +837,7 @@ def main():
         print(f"  {stage.capitalize()} output: {path}")
 
     # Generate final graph if metrics were collected
-    if args.metrics and metrics_logger:
+    if metrics_logger:
         print("\nGenerating angles graph...")
         plotter = MetricsPlotter()
         graph_path = save_dir / f"{source_path.stem}_angles_graph.png"
